@@ -1,0 +1,29 @@
+name: main
+database: people
+tier: proprietary
+description: "The people nucleus. 818M professionals with identity, current role, skills, education summary, and scores."
+rows: 818M
+order_by: [country, speaker_person_id]
+
+columns:
+  speaker_person_id: { type: String, description: "spkp_ + 20 hex. Universal person key." }
+  first:             { type: String }
+  last:              { type: String }
+  country:           { type: "LowCardinality(String)", description: "ISO 2-letter" }
+  location:          { type: String, description: "Free text: 'San Francisco Bay Area'" }
+  title:             { type: String, description: "Current job title" }
+  org:               { type: String, description: "Current employer" }
+  org_slug:          { type: String, description: "Company LinkedIn slug" }
+  org_domain:        { type: String, description: "Company website domain" }
+  entity_id:         { type: String, connects_to: companies.main.entity_id, description: "16% fill" }
+  seniority:         { type: "LowCardinality(String)", description: "c_suite|vp|director|manager|senior_ic|ic" }
+  track:             { type: "LowCardinality(String)", description: "manager|individual" }
+  influencer_score:  { type: Float32, description: "Network influence 0-1" }
+  depth:             { type: Float32, description: "Profile completeness 0-1" }
+  last_updated:      { type: Date }
+  technologies:      { type: "Array(String)", description: "Technical skills. has() / hasAny() queryable." }
+  domain_knowledge:  { type: "Array(String)", description: "Professional expertise areas." }
+  credentials:       { type: "Array(String)", description: "Certifications, licenses." }
+  languages:         { type: "Array(String)", description: "Spoken languages." }
+  highest_degree:    { type: "LowCardinality(String)", description: "PhD|Master|Bachelor|Associate|Diploma|High School|Certificate" }
+  school:            { type: String, description: "School for highest degree" }

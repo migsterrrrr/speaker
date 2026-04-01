@@ -1,0 +1,17 @@
+name: links
+database: web
+tier: open
+description: "Domain-to-domain link graph. Who links to who and how often."
+rows: 56M
+order_by: [target_domain, source_domain]
+
+columns:
+  source_entity_id: { type: String, connects_to: companies.main.entity_id }
+  source_domain:    { type: String }
+  target_domain:    { type: String }
+  page_count:       { type: UInt32, description: "How many pages contain this link" }
+
+source:
+  pipeline: pipelines/web/
+  refresh: quarterly
+  parquet: "huggingface.co/datasets/speakerdata/web-links"

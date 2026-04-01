@@ -1,0 +1,26 @@
+name: repos
+database: people
+tier: open
+description: "GitHub repositories. 40M repos linked to people via github username."
+rows: 40M
+order_by: [owner, repo]
+
+columns:
+  speaker_person_id: { type: String, connects_to: people.main.speaker_person_id, description: "347K matched people" }
+  owner:             { type: String, description: "GitHub username" }
+  repo:              { type: String }
+  language:          { type: "LowCardinality(String)", description: "Primary language" }
+  created_at:        { type: "Nullable(DateTime)" }
+  description:       { type: String, description: "Repo description. 48% fill." }
+  description_language: { type: "LowCardinality(String)" }
+  license:           { type: "LowCardinality(String)" }
+  forks:             { type: UInt32 }
+  stars:             { type: UInt32 }
+  size_kb:           { type: UInt64 }
+  last_pr_id:        { type: UInt32, description: "Highest PR number — activity proxy" }
+
+source:
+  origin: "HuggingFace: ibragim-bad/github-repos-metadata-40M"
+  pipeline: pipelines/repos/
+  refresh: quarterly
+  parquet: "huggingface.co/datasets/speakerdata/people-repos"

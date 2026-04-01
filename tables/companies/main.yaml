@@ -1,0 +1,29 @@
+name: main
+database: companies
+tier: proprietary
+description: "The companies nucleus. 3.7M companies with AI-synthesized profiles."
+rows: 3.7M
+order_by: [country, entity_id]
+
+columns:
+  entity_id:      { type: String, description: "spk_ — universal company key" }
+  name:           { type: String }
+  summary:        { type: String, description: "AI-generated description" }
+  keywords:       { type: "Array(String)", description: "What they do. has() / hasAny() queryable." }
+  offerings:      { type: "Array(String)", description: "Products/services" }
+  market:         { type: "LowCardinality(String)", description: "b2b|b2c|b2b2c|b2g" }
+  customer_types: { type: "Array(String)" }
+  naics_codes:    { type: "Array(String)" }
+  business_model: { type: "LowCardinality(String)", description: "subscription|fees|sales|consulting|retail|manufacturing|..." }
+  headcount:      { type: UInt32 }
+  size:           { type: Enum, description: "solo|micro|small|medium|large|enterprise" }
+  founded:        { type: UInt16 }
+  country:        { type: "LowCardinality(String)", description: "ISO 2-letter" }
+  region:         { type: String }
+  city:           { type: String }
+  address:        { type: String }
+  lat:            { type: Float32 }
+  lng:            { type: Float32 }
+  website:        { type: String, description: "Primary domain (bare: stripe.com)" }
+  reputation:     { type: Float32, description: "Authority score 0-1" }
+  last_updated:   { type: Date }

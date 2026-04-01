@@ -1,0 +1,19 @@
+name: contact
+database: people
+tier: open
+description: "Contact handles for people. LinkedIn, email, Twitter, GitHub, personal website."
+rows: 863M
+order_by: [speaker_person_id]
+
+columns:
+  speaker_person_id: { type: String, connects_to: people.main.speaker_person_id }
+  linkedin_slug:     { type: String, description: "LinkedIn vanity URL slug. 100% fill." }
+  email_work:        { type: String, description: "Work email. 79M people." }
+  twitter:           { type: String, description: "Twitter/X handle. 4.1M people." }
+  github:            { type: String, description: "GitHub username. 835K people." }
+  website:           { type: String, description: "Personal website. 17.8M people." }
+
+source:
+  pipeline: pipelines/contact/
+  refresh: monthly
+  parquet: "huggingface.co/datasets/speakerdata/people-contact"

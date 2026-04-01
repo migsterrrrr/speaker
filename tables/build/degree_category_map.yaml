@@ -1,0 +1,19 @@
+name: degree_category_map
+database: build
+tier: open
+description: "190K degree strings classified into degree_level + field_of_study."
+rows: 190K
+order_by: [degree_raw]
+
+columns:
+  degree_raw:      { type: String, description: "Raw degree string from source" }
+  degree_level:    { type: "LowCardinality(String)", description: "PhD|Master|Bachelor|Associate|Diploma|High School|Certificate|Other" }
+  field_of_study:  { type: String, description: "Extracted discipline in English" }
+
+source:
+  pipeline: pipelines/education/
+  parquet: "huggingface.co/datasets/speakerdata/degree-category-map"
+
+build_notes: |
+  Classified via Gemini 2.5 Flash (32 parallel workers).
+  Multilingual: Licenciatura → Bachelor, Baccalauréat → High School, Doutorado → PhD.

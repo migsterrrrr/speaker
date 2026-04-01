@@ -1,0 +1,25 @@
+name: education
+database: people
+tier: open
+description: "Full education history. Schools, degrees, fields of study."
+rows: 333M
+order_by: [speaker_person_id, start]
+
+columns:
+  speaker_person_id: { type: String, connects_to: people.main.speaker_person_id }
+  school:            { type: String }
+  degree:            { type: String, description: "Raw degree string" }
+  degree_level:      { type: "LowCardinality(String)", description: "PhD|Master|Bachelor|Associate|Diploma|High School|Certificate|Other" }
+  field_of_study:    { type: String, description: "Extracted discipline in English" }
+  start:             { type: String, description: "YYYY or YYYY-MM" }
+  end:               { type: String, description: "YYYY or YYYY-MM" }
+
+source:
+  pipeline: pipelines/education/
+  refresh: monthly
+  parquet: "huggingface.co/datasets/speakerdata/people-education"
+
+build_notes: |
+  190K unique degree strings classified via LLM (Gemini Flash + Qwen 35B).
+  Degree level + field of study extracted. Multilingual normalization automatic.
+  degree_category_map is the frozen lookup table.

@@ -1,0 +1,26 @@
+name: pages
+database: web
+tier: open
+description: "Company web pages. Full text, headings, contact info. Always filter by domain first."
+rows: 1.3B
+order_by: null
+note: "VIEW over websearch.pages. No sort key. Always filter by domain."
+
+columns:
+  domain:   { type: String, description: "⚠️ Always filter by this first" }
+  url:      { type: String }
+  title:    { type: String }
+  page_type: { type: "LowCardinality(String)" }
+  text:     { type: String, description: "Full page text" }
+  word_count: { type: UInt32 }
+  desc:     { type: String, description: "Meta description" }
+  emails:   { type: String }
+  phones:   { type: String }
+  headings: { type: String }
+  tools:    { type: String, description: "Detected tech stack" }
+  lang:     { type: "LowCardinality(String)" }
+
+source:
+  pipeline: pipelines/web/
+  refresh: quarterly
+  note: "Too large for HuggingFace (~500GB+). Hosted only."

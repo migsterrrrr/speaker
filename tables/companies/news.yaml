@@ -1,0 +1,23 @@
+name: news
+database: companies
+tier: open
+description: "News articles and Google News mentions per company."
+rows: 19M
+order_by: [domain, published_date]
+
+columns:
+  entity_id:        { type: String, connects_to: companies.main.entity_id }
+  domain:           { type: String }
+  linkedin_id:      { type: String }
+  title:            { type: String, description: "Article headline" }
+  url:              { type: String }
+  publisher:        { type: String }
+  publisher_domain: { type: String }
+  published_date:   { type: Date }
+  confidence:       { type: Float32, description: "Match confidence" }
+  source:           { type: "LowCardinality(String)", description: "google_news, etc." }
+
+source:
+  pipeline: pipelines/companies/
+  refresh: monthly
+  parquet: "huggingface.co/datasets/speakerdata/companies-news"

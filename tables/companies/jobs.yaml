@@ -1,0 +1,25 @@
+name: jobs
+database: companies
+tier: open
+description: "Active job postings. Titles, categories, descriptions, locations."
+rows: 755K
+order_by: [domain, date_added]
+
+columns:
+  entity_id:    { type: String, connects_to: companies.main.entity_id }
+  domain:       { type: String }
+  company_name: { type: String }
+  linkedin_id:  { type: String }
+  title:        { type: String }
+  url:          { type: String }
+  openings:     { type: UInt32 }
+  category:     { type: "LowCardinality(String)", description: "Engineering|Sales|Product|Marketing|Operations|Design|..." }
+  description:  { type: String, description: "Full job description" }
+  date_added:   { type: DateTime64 }
+  date_updated: { type: DateTime64 }
+  location:     { type: String }
+
+source:
+  pipeline: pipelines/companies/
+  refresh: monthly
+  parquet: "huggingface.co/datasets/speakerdata/companies-jobs"

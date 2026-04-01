@@ -1,0 +1,20 @@
+name: skill_category_map
+database: build
+tier: open
+description: "1.38M LinkedIn skills classified into technology, domain_knowledge, credentials, language, unknown."
+rows: 1.38M
+order_by: [normalized_skill]
+
+columns:
+  normalized_skill: { type: String, description: "Lowercase input from LinkedIn" }
+  canonical_en:     { type: String, description: "Normalized English name" }
+  category:         { type: "LowCardinality(String)", description: "technology|domain_knowledge|credentials|language|unknown" }
+
+source:
+  pipeline: pipelines/skills/
+  parquet: "huggingface.co/datasets/speakerdata/skill-category-map"
+
+build_notes: |
+  Classified via Qwen 35B on H100 (1.34M) + Gemini Flash retry (39K).
+  50 skills per batch. 677K unique canonical names after dedup.
+  Multilingual: "gestión de proyectos" → "Project Management".

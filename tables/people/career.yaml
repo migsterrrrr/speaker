@@ -1,0 +1,28 @@
+name: career
+database: people
+tier: open
+description: "Full role history. Every job a person has held."
+rows: 974M
+order_by: [person_id, start, org_name]
+
+columns:
+  person_id:     { type: String, connects_to: people.main.speaker_person_id }
+  title:         { type: String }
+  start:         { type: "Nullable(String)", description: "YYYY-MM" }
+  end:           { type: "Nullable(String)", description: "YYYY-MM, NULL = current" }
+  org_name:      { type: String }
+  entity_id:     { type: String, connects_to: companies.main.entity_id }
+  org_domain:    { type: String }
+  roles_context: { type: String, description: "Role description, HTML-cleaned" }
+  location:      { type: String }
+
+source:
+  pipeline: pipelines/career/
+  refresh: monthly
+  parquet: "huggingface.co/datasets/speakerdata/people-career"
+
+build_notes: |
+  Cherry-picked from two sources. Source A provides broader history,
+  Source B provides org_domain (78.5%) and cleaner dates.
+  CC-batched to manage memory. HTML-cleaned descriptions.
+  Deduped by (person_id, lower(title), lower(org_name), start, end).

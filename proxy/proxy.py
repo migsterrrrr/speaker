@@ -148,9 +148,9 @@ def _validate_sql_parser(sql: str):
     
     parsed = stmts[0]
     
-    # Must be SELECT (or UNION of SELECTs)
-    if not isinstance(parsed, (exp.Select, exp.Union)):
-        raise HTTPException(status_code=400, detail="Only SELECT queries allowed.")
+    # Must be SELECT, UNION, or DESCRIBE/SHOW
+    if not isinstance(parsed, (exp.Select, exp.Union, exp.Describe, exp.Show)):
+        raise HTTPException(status_code=400, detail="Only SELECT and DESCRIBE queries allowed.")
     
     # Check all referenced tables — must use database.table format
     for table in parsed.find_all(exp.Table):
@@ -186,8 +186,8 @@ def _validate_sql_string(sql: str):
     sql_norm = re.sub(r'\s+', ' ', sql_norm)
     sql_check = re.sub(r"'[^']*'", "''", sql_norm)
     
-    if not sql_upper.startswith("SELECT"):
-        raise HTTPException(status_code=400, detail="Only SELECT queries allowed")
+    if not (sql_upper.startswith("SELECT") or sql_upper.startswith("DESCRIBE") or sql_upper.startswith("SHOW")):
+        raise HTTPException(status_code=400, detail="Only SELECT and DESCRIBE queries allowed")
     for kw in ["DROP", "DELETE", "INSERT", "UPDATE", "ALTER", "TRUNCATE", "CREATE"]:
         if kw in sql_check:
             raise HTTPException(status_code=400, detail=f"Forbidden: {kw} not allowed")
@@ -235,6 +235,17 @@ def _cap_limit(sql: str) -> str:
 
 def enforce_limits(sql: str) -> str:
     """Validate SQL security and cap LIMIT."""
+    sql_stripped = sql.strip()
+    sql_upper = sql_stripped.upper()
+    
+    # DESCRIBE/SHOW COLUMNS — allow if database is in allowed list
+    if sql_upper.startswith("DESCRIBE ") or sql_upper.startswith("DESC "):
+        table_ref = sql_stripped.split(None, 1)[1].strip().rstrip(";")
+        parts = table_ref.split(".")
+        if len(parts) != 2 or parts[0].lower() not in ALLOWED_DATABASES:
+            raise HTTPException(status_code=400, detail="Use database.table format: people.main, companies.main, etc.")
+        return sql_stripped
+    
     # Primary: AST parser
     try:
         _validate_sql_parser(sql)

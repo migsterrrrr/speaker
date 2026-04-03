@@ -5,8 +5,8 @@ set -eu
 
 INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
 CONFIG_DIR="${CONFIG_DIR:-$HOME/.speaker}"
-BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/speakerdata/speaker/main/cli}"
-SKILL_URL="${SKILL_URL:-https://raw.githubusercontent.com/speakerdata/speaker/main/SKILL.md}"
+BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/cli}"
+SKILL_URL="${SKILL_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/SKILL.md}"
 
 fail() {
   echo "Error: $1" >&2

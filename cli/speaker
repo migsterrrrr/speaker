@@ -6,7 +6,7 @@ set -e
 
 # --- Config ---
 VERSION="3.0.0"
-REPO_URL="https://raw.githubusercontent.com/speakerdata/speaker/main/cli"
+REPO_URL="https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/cli"
 API_URL="https://api.speaker.sh"
 CONFIG_DIR="$HOME/.speaker"
 CONFIG_FILE="$CONFIG_DIR/config"
@@ -28,7 +28,7 @@ cmd_update() {
     curl --fail --show-error --silent --location "$REPO_URL/speaker" -o /usr/local/bin/speaker
     chmod +x /usr/local/bin/speaker
     mkdir -p "$CONFIG_DIR"
-    if ! curl --fail --show-error --silent --location "https://raw.githubusercontent.com/speakerdata/speaker/main/SKILL.md" -o "$CONFIG_DIR/SKILL.md"; then
+    if ! curl --fail --show-error --silent --location "https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/SKILL.md" -o "$CONFIG_DIR/SKILL.md"; then
         echo "Warning: updated CLI, but failed to refresh $CONFIG_DIR/SKILL.md" >&2
     fi
     local new_ver=$(grep '^VERSION=' /usr/local/bin/speaker | cut -d'"' -f2)

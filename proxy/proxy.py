@@ -24,7 +24,7 @@ from fastapi.responses import PlainTextResponse, JSONResponse
 logger = logging.getLogger("speaker-proxy")
 
 # --- Config ---
-CH_HOST = os.environ.get("CH_HOST", "http://100.74.121.1:8123")
+CH_HOST = os.environ.get("CH_HOST", "http://localhost:8123")
 CH_USER = os.environ.get("CH_USER", "speaker_reader")
 CH_PASS = os.environ["CH_PASS"]  # required — set in systemd unit or .env
 DB_PATH = os.environ.get("DB_PATH", "/data/leads-proxy/keys.db")

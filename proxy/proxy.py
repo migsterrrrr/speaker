@@ -29,9 +29,8 @@ CH_USER = os.environ.get("CH_USER", "speaker_reader")
 CH_PASS = os.environ["CH_PASS"]  # required — set in systemd unit or .env
 DB_PATH = os.environ.get("DB_PATH", "/data/leads-proxy/keys.db")
 LOG_PATH = os.environ.get("LOG_PATH", "/data/leads-proxy/queries.log")
-MAX_RESULT_ROWS = 1000  # hard cap per query
-RATE_LIMIT_PER_SECOND = 5
-RATE_LIMIT_PER_DAY = 5000
+MAX_RESULT_ROWS = 100000  # hard cap per query
+RATE_LIMIT_PER_SECOND = 20
 
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 
@@ -39,26 +38,17 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 class RateLimiter:
     def __init__(self):
         self.requests = defaultdict(list)  # key -> [timestamps]
-        self.daily_counts = defaultdict(lambda: [0, ""])  # key -> [count, date_str]
     
     def check(self, api_key: str):
         now = time.time()
-        today = datetime.utcnow().strftime("%Y-%m-%d")
         
         # Per-second: keep only last 1 second of timestamps
         self.requests[api_key] = [t for t in self.requests[api_key] if now - t < 1.0]
         if len(self.requests[api_key]) >= RATE_LIMIT_PER_SECOND:
-            raise HTTPException(status_code=429, detail=f"Rate limit: max {RATE_LIMIT_PER_SECOND} queries/second")
-        
-        # Per-day: reset if new day
-        if self.daily_counts[api_key][1] != today:
-            self.daily_counts[api_key] = [0, today]
-        if self.daily_counts[api_key][0] >= RATE_LIMIT_PER_DAY:
-            raise HTTPException(status_code=429, detail=f"Daily limit reached: {RATE_LIMIT_PER_DAY} queries/day")
+            raise HTTPException(status_code=429, detail=f"Rate limit: max {RATE_LIMIT_PER_SECOND} queries/second. Fire in parallel, not sequential.")
         
         # Record
         self.requests[api_key].append(now)
-        self.daily_counts[api_key][0] += 1
 
 rate_limiter = RateLimiter()
 

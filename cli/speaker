@@ -340,7 +340,7 @@ TABLES:
   web.links            56M    web.pages           1.3B
 
 LIMITS:
-  Max 1,000 rows per query. Max 5,000 queries per day.
+  Max 100,000 rows per query. No daily limit.
 
 Your agent should read: ~/.speaker/SKILL.md
 EOF

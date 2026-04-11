@@ -6,7 +6,8 @@ set -e
 
 # --- Config ---
 VERSION="3.0.0"
-REPO_URL="https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/cli"
+REPO_URL="https://raw.githubusercontent.com/migsterrrrr/speaker/master/cli"
+SKILL_URL="https://raw.githubusercontent.com/migsterrrrr/speaker/master/SKILL.md"
 API_URL="https://api.speaker.sh"
 CONFIG_DIR="$HOME/.speaker"
 CONFIG_FILE="$CONFIG_DIR/config"
@@ -24,14 +25,25 @@ check_version() {
 }
 
 cmd_update() {
+    local target
+    target=$(command -v speaker 2>/dev/null || true)
+    if [[ -z "$target" ]]; then
+        echo "Error: speaker is not on PATH. Re-run the installer." >&2
+        exit 1
+    fi
+    if [[ ! -w "$(dirname "$target")" ]]; then
+        echo "Error: no write access to $(dirname "$target"). Re-run the installer with a user-writable BINDIR or PREFIX." >&2
+        exit 1
+    fi
+
     echo "Updating speaker CLI..."
-    curl --fail --show-error --silent --location "$REPO_URL/speaker" -o /usr/local/bin/speaker
-    chmod +x /usr/local/bin/speaker
+    curl --fail --show-error --silent --location "$REPO_URL/speaker" -o "$target"
+    chmod +x "$target"
     mkdir -p "$CONFIG_DIR"
-    if ! curl --fail --show-error --silent --location "https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/SKILL.md" -o "$CONFIG_DIR/SKILL.md"; then
+    if ! curl --fail --show-error --silent --location "$SKILL_URL" -o "$CONFIG_DIR/SKILL.md"; then
         echo "Warning: updated CLI, but failed to refresh $CONFIG_DIR/SKILL.md" >&2
     fi
-    local new_ver=$(grep '^VERSION=' /usr/local/bin/speaker | cut -d'"' -f2)
+    local new_ver=$(grep '^VERSION=' "$target" | cut -d'"' -f2)
     echo "✓ Updated to v${new_ver}"
 }
 

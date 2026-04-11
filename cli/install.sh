@@ -3,10 +3,11 @@
 
 set -eu
 
-INSTALL_DIR="${INSTALL_DIR:-/usr/local/bin}"
+REPO="${REPO:-migsterrrrr/speaker}"
+REF="${REF:-master}"
+BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/$REPO/$REF/cli}"
+SKILL_URL="${SKILL_URL:-https://raw.githubusercontent.com/$REPO/$REF/SKILL.md}"
 CONFIG_DIR="${CONFIG_DIR:-$HOME/.speaker}"
-BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/cli}"
-SKILL_URL="${SKILL_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker-cli/master/SKILL.md}"
 
 fail() {
   echo "Error: $1" >&2
@@ -31,34 +32,84 @@ download() {
   [ -s "$out" ] || fail "Downloaded file is empty: $url"
 }
 
+is_writable_dir_or_parent() {
+  dir="$1"
+  if [ -d "$dir" ]; then
+    [ -w "$dir" ]
+    return
+  fi
+  parent=$(dirname "$dir")
+  [ -d "$parent" ] && [ -w "$parent" ]
+}
+
+choose_bindir() {
+  if [ -n "${BINDIR:-}" ]; then
+    printf '%s\n' "$BINDIR"
+    return
+  fi
+  if [ -n "${INSTALL_DIR:-}" ]; then
+    printf '%s\n' "$INSTALL_DIR"
+    return
+  fi
+  if [ -n "${PREFIX:-}" ]; then
+    printf '%s\n' "$PREFIX/bin"
+    return
+  fi
+  if is_writable_dir_or_parent "/usr/local/bin"; then
+    printf '%s\n' "/usr/local/bin"
+    return
+  fi
+  printf '%s\n' "$HOME/.local/bin"
+}
+
+path_has_dir() {
+  case ":${PATH:-}:" in
+    *":$1:"*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
 
-[ -d "$INSTALL_DIR" ] || mkdir -p "$INSTALL_DIR" || fail "Install directory does not exist and could not be created: $INSTALL_DIR"
-[ -w "$INSTALL_DIR" ] || fail "No write access to $INSTALL_DIR (use sudo or set INSTALL_DIR)"
+BINDIR="$(choose_bindir)"
+TARGET="$BINDIR/speaker"
+
+mkdir -p "$BINDIR" || fail "Could not create bin directory: $BINDIR"
+[ -w "$BINDIR" ] || fail "No write access to $BINDIR. Set BINDIR=/your/bin or PREFIX=/your/prefix"
 
 TMP_SPEAKER="$(mktemp)"
 TMP_DOCS="$(mktemp)"
 trap cleanup EXIT INT TERM HUP
 
-echo "Installing speaker CLI..."
+echo "Installing speaker CLI from $REPO@$REF..."
 
 download "$BASE_URL/speaker" "$TMP_SPEAKER"
 download "$SKILL_URL" "$TMP_DOCS"
 
 mkdir -p "$CONFIG_DIR"
 
-cp "$TMP_SPEAKER" "$INSTALL_DIR/speaker"
-chmod 755 "$INSTALL_DIR/speaker"
+cp "$TMP_SPEAKER" "$TARGET"
+chmod 755 "$TARGET"
 
 cp "$TMP_DOCS" "$CONFIG_DIR/SKILL.md"
 chmod 644 "$CONFIG_DIR/SKILL.md"
 
 echo ""
-echo "  ✓ speaker installed to $INSTALL_DIR/speaker"
+echo "  ✓ speaker installed to $TARGET"
 echo "  ✓ Agent docs saved to $CONFIG_DIR/SKILL.md"
+if ! path_has_dir "$BINDIR"; then
+  echo ""
+  echo "  Add this to your shell profile so 'speaker' is on PATH:"
+  echo "    export PATH=\"$BINDIR:\$PATH\""
+fi
 echo ""
 echo "  Get started:"
 echo "    speaker signup          Create an account"
 echo "    speaker help            See all commands"
+echo ""
+echo "  Overrides:"
+echo "    PREFIX=/path            Install to PREFIX/bin (npm-style)"
+echo "    BINDIR=/path            Install to an exact bin directory"
+echo "    REF=<tag-or-commit>     Install a specific version"
 echo ""

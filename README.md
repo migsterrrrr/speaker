@@ -20,7 +20,14 @@ People. Companies. Connected by career moves, skills, education, web links, code
 
 ```bash
 # Install
+# Uses /usr/local/bin if writable, otherwise falls back to ~/.local/bin
 curl -sL https://raw.githubusercontent.com/migsterrrrr/speaker/master/cli/install.sh | sh
+
+# Install to a custom prefix (npm-style: PREFIX/bin)
+curl -sL https://raw.githubusercontent.com/migsterrrrr/speaker/master/cli/install.sh | PREFIX="$HOME/.local" sh
+
+# Install to an exact bin dir
+curl -sL https://raw.githubusercontent.com/migsterrrrr/speaker/master/cli/install.sh | BINDIR="$HOME/bin" sh
 
 # Pi
 pi install git:github.com/migsterrrrr/speaker

@@ -140,8 +140,8 @@ WELCOME
 cmd_login() {
     # Accept key directly: speaker login sk-abc123
     if [[ -n "$1" ]]; then
-        # Validate the key
-        if ! curl --fail --show-error --silent "$API_URL/health" -H "X-API-Key: $1" >/dev/null 2>&1; then
+        # Validate the key against an authenticated endpoint
+        if ! curl --fail --show-error --silent "$API_URL/schema" -H "X-API-Key: $1" >/dev/null 2>&1; then
             echo "Error: invalid API key or service unavailable"
             exit 1
         fi
@@ -277,16 +277,29 @@ cmd_query() {
 }
 
 cmd_count() {
-    check_auth
-    local key=$(get_key)
-    local resp
-    if ! resp=$(curl --fail --show-error --silent "$API_URL/query" \
-        -H "X-API-Key: $key" \
-        -d "SELECT formatReadableQuantity(count()) as people FROM people.main" 2>&1); then
+    local key resp count
+    key=$(get_key)
+
+    # Prefer the precise query if we're logged in, but fall back to /health
+    # so `speaker count` works before signup/login too.
+    if [[ -n "$key" ]]; then
+        if resp=$(curl --fail --show-error --silent "$API_URL/query" \
+            -H "X-API-Key: $key" \
+            -d "SELECT formatReadableQuantity(count()) as people FROM people.main" 2>/dev/null); then
+            count=$(echo "$resp" | grep -o '"people":"[^"]*"' | cut -d'"' -f4)
+            if [[ -n "$count" ]]; then
+                echo "$count"
+                return
+            fi
+        fi
+    fi
+
+    if ! resp=$(curl --fail --show-error --silent "$API_URL/health" 2>&1); then
         echo "Error: could not get count: $resp" >&2
         exit 1
     fi
-    local count=$(echo "$resp" | grep -o '"people":"[^"]*"' | cut -d'"' -f4)
+
+    count=$(echo "$resp" | grep -o '"people":"[^"]*"' | cut -d'"' -f4)
     echo "${count:-Error: could not get count}"
 }
 
@@ -335,6 +348,7 @@ COMMANDS:
   speaker signup                  Sign up with invite code
   speaker signup <email> <code>   Sign up non-interactively
   speaker login <api-key>         Log in on another machine
+  speaker status                  Check account status by email
   speaker query "SQL"             Run a SQL query
   speaker count                   Total people
   speaker schema                  Show the mesh

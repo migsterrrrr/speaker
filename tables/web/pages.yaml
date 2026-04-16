@@ -6,11 +6,17 @@ keys:
   useful:
     domain: best filter key; filter by domain before reading large text fields
     url: page URL
-  joins:
-    web.links.source_domain: domain
-    web.links.target_domain: domain
-    companies.jobs.domain: domain
-    companies.news.domain: domain
+hop_keys:
+  domain:
+    note: best page-level company hop key; normalize to a bare domain when needed
+    carry_to:
+    - people.main.org_domain
+    - people.career.org_domain
+    - companies.main.website
+    - companies.jobs.domain
+    - companies.news.domain
+    - web.links.source_domain
+    - web.links.target_domain
 query_hints:
 - always filter by domain before selecting desc or text; this table is huge
 - domain and url may be percent-encoded for IDNs

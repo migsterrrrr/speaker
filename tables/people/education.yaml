@@ -4,13 +4,19 @@ grain: 1 row = 1 education record
 keys:
   useful:
     speaker_person_id: person id
-  joins:
-    people.main.speaker_person_id: speaker_person_id
+hop_keys:
+  speaker_person_id:
+    note: person nucleus id
+    carry_to:
+    - people.main.speaker_person_id
+    - people.career.person_id
+    - people.contact.speaker_person_id
+    - people.repos.speaker_person_id
 query_hints:
 - start and end are strings, usually YYYY-MM, not Date columns
 - degree and field_of_study can be empty even when school exists
 columns:
-  speaker_person_id: string; join to people.main.speaker_person_id
+  speaker_person_id: string; hop to people.main.speaker_person_id
   school: string?
   degree: string?
   degree_level: string?; examples Bachelor|Master|Certificate

@@ -7,6 +7,41 @@ keys:
     source_domain: source domain
     target_entity_id: target company entity id when present
     target_domain: target domain
+hop_keys:
+  source_entity_id:
+    note: source-side company nucleus id when present
+    carry_to:
+    - people.main.entity_id
+    - people.career.entity_id
+    - companies.main.entity_id
+    - companies.jobs.entity_id
+    - companies.news.entity_id
+  target_entity_id:
+    note: target-side company nucleus id when present
+    carry_to:
+    - people.main.entity_id
+    - people.career.entity_id
+    - companies.main.entity_id
+    - companies.jobs.entity_id
+    - companies.news.entity_id
+  source_domain:
+    note: source-side company domain
+    carry_to:
+    - people.main.org_domain
+    - people.career.org_domain
+    - companies.main.website
+    - companies.jobs.domain
+    - companies.news.domain
+    - web.pages.domain
+  target_domain:
+    note: target-side company domain
+    carry_to:
+    - people.main.org_domain
+    - people.career.org_domain
+    - companies.main.website
+    - companies.jobs.domain
+    - companies.news.domain
+    - web.pages.domain
 query_hints:
 - page_count is the number of source pages linking to the target domain
 - source_entity_id and target_entity_id may be blank

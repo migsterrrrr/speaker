@@ -422,7 +422,7 @@ cmd_mesh() {
     🕸️ web.links              56M    Domain-to-domain link graph
     📄 web.pages             1.3B    Company web pages (filter by domain)
 
-    Use 'speaker schema <database.table>' for curated YAML.
+    Use 'speaker schema <database.table>' for curated YAML and hop keys.
     Use 'speaker query "DESCRIBE database.table"' for raw metadata.
 
     more queries = more signal

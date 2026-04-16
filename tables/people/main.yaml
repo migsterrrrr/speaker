@@ -7,11 +7,33 @@ keys:
     entity_id: current org entity id
     org_domain: current org domain
     org_slug: current org slug; can be text or numeric-like
-  joins:
-    people.education.speaker_person_id: speaker_person_id
-    people.contact.speaker_person_id: speaker_person_id
-    people.repos.speaker_person_id: speaker_person_id
-    people.career.person_id: speaker_person_id
+hop_keys:
+  speaker_person_id:
+    note: canonical person nucleus id
+    carry_to:
+    - people.career.person_id
+    - people.education.speaker_person_id
+    - people.contact.speaker_person_id
+    - people.repos.speaker_person_id
+  entity_id:
+    note: current company nucleus id on the person snapshot
+    carry_to:
+    - people.career.entity_id
+    - companies.main.entity_id
+    - companies.jobs.entity_id
+    - companies.news.entity_id
+    - web.links.source_entity_id
+    - web.links.target_entity_id
+  org_domain:
+    note: current company domain; normalize to a bare domain when needed
+    carry_to:
+    - people.career.org_domain
+    - companies.main.website
+    - companies.jobs.domain
+    - companies.news.domain
+    - web.links.source_domain
+    - web.links.target_domain
+    - web.pages.domain
 query_hints:
 - treat this as the current snapshot, not full career history
 - arrays are real JSON arrays

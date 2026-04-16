@@ -7,9 +7,30 @@ keys:
     entity_id: company entity id when present
     linkedin_id: company LinkedIn id when present
     domain: company domain when present
-  joins:
-    companies.main.entity_id: entity_id
-    companies.news.linkedin_id: linkedin_id
+hop_keys:
+  entity_id:
+    note: company nucleus id when present
+    carry_to:
+    - people.main.entity_id
+    - people.career.entity_id
+    - companies.main.entity_id
+    - companies.news.entity_id
+    - web.links.source_entity_id
+    - web.links.target_entity_id
+  domain:
+    note: company domain when present
+    carry_to:
+    - people.main.org_domain
+    - people.career.org_domain
+    - companies.main.website
+    - companies.news.domain
+    - web.links.source_domain
+    - web.links.target_domain
+    - web.pages.domain
+  linkedin_id:
+    note: secondary company key when entity_id is blank
+    carry_to:
+    - companies.news.linkedin_id
 query_hints:
 - description can be very large multi-paragraph text
 - entity_id, domain, and linkedin_id may be blank on valid rows
@@ -22,7 +43,8 @@ columns:
   title: string; job title
   url: string?; job posting URL
   openings: int
-  category: string?; common values Others|Engineering|Sales|Product|Operations|Consultancy|Marketing|Project Management|Design
+  category: string?; common values Others|Engineering|Sales|Product|Operations|Consultancy|Marketing|Project
+    Management|Design
   description: string?; long free text
   date_added: timestamp
   date_updated: timestamp

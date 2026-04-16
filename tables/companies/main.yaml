@@ -6,11 +6,26 @@ keys:
   useful:
     website: company website, usually a bare domain
     name: company name
-  joins:
-    companies.jobs.entity_id: entity_id
-    companies.news.entity_id: entity_id
-    web.links.source_entity_id: entity_id
-    web.links.target_entity_id: entity_id
+hop_keys:
+  entity_id:
+    note: canonical company nucleus id
+    carry_to:
+    - people.main.entity_id
+    - people.career.entity_id
+    - companies.jobs.entity_id
+    - companies.news.entity_id
+    - web.links.source_entity_id
+    - web.links.target_entity_id
+  website:
+    note: canonical company domain; usually a bare domain
+    carry_to:
+    - people.main.org_domain
+    - people.career.org_domain
+    - companies.jobs.domain
+    - companies.news.domain
+    - web.links.source_domain
+    - web.links.target_domain
+    - web.pages.domain
 query_hints:
 - keywords, offerings, customer_types, and naics_codes are real JSON arrays
 - website is usually a bare domain, not a full URL

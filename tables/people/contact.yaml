@@ -3,14 +3,20 @@ purpose: person contact bundle
 grain: 1 row = 1 person
 keys:
   primary: speaker_person_id
-  joins:
-    people.main.speaker_person_id: speaker_person_id
+hop_keys:
+  speaker_person_id:
+    note: person nucleus id
+    carry_to:
+    - people.main.speaker_person_id
+    - people.career.person_id
+    - people.education.speaker_person_id
+    - people.repos.speaker_person_id
 query_hints:
 - most contact fields are empty on many rows
 - linkedin_slug, twitter, and github are bare handles/slugs, not full URLs
 - website may be a full URL or a bare domain
 columns:
-  speaker_person_id: string; join to people.main.speaker_person_id
+  speaker_person_id: string; hop to people.main.speaker_person_id
   linkedin_slug: string?; bare LinkedIn slug
   email_work: string?; work email
   twitter: string?; bare handle, not URL

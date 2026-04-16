@@ -6,8 +6,14 @@ keys:
     speaker_person_id: person id when present; often blank
     owner: GitHub owner/login
     repo: GitHub repo name
-  joins:
-    people.main.speaker_person_id: speaker_person_id
+hop_keys:
+  speaker_person_id:
+    note: person nucleus id when present; often blank
+    carry_to:
+    - people.main.speaker_person_id
+    - people.career.person_id
+    - people.education.speaker_person_id
+    - people.contact.speaker_person_id
 query_hints:
 - speaker_person_id is often blank; do not rely on it
 - owner plus repo identifies the repository

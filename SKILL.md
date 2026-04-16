@@ -32,7 +32,7 @@ ssh root@100.74.121.1 "clickhouse-client --query \"SQL\""
 
 10 tables. 0 cost per query. Millisecond responses.
 
-Use curated schema first:
+Use curated schema first, especially the hop keys between tables:
 
 ```bash
 speaker schema people.main

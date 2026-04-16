@@ -48,7 +48,7 @@ Every edge is a hop. Carry IDs between queries. The insight is never in one tabl
 
 ## Schema
 
-Curated schema docs:
+Curated schema docs, including explicit hop keys between mesh tables:
 
 ```bash
 speaker schema

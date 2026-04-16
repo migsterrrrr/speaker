@@ -1,28 +1,25 @@
-name: career
-database: people
-tier: open
-description: "Full role history. Every job a person has held."
-rows: 974M
-order_by: [person_id, start, org_name]
-
+table: people.career
+purpose: person role history
+grain: 1 row = 1 person-role entry
+keys:
+  useful:
+    person_id: same id format as people.main.speaker_person_id
+    entity_id: org entity id for this role
+    org_domain: org domain for this role
+  joins:
+    people.main.speaker_person_id: person_id
+    companies.main.entity_id: entity_id
+query_hints:
+- multiple rows per person; do not assume current role only
+- start and end are strings, usually YYYY-MM, and can be null
+- roles_context can be long free text
 columns:
-  person_id:     { type: String, connects_to: people.main.speaker_person_id }
-  title:         { type: String }
-  start:         { type: "Nullable(String)", description: "YYYY-MM" }
-  end:           { type: "Nullable(String)", description: "YYYY-MM, NULL = current" }
-  org_name:      { type: String }
-  entity_id:     { type: String, connects_to: companies.main.entity_id }
-  org_domain:    { type: String }
-  roles_context: { type: String, description: "Role description, HTML-cleaned" }
-  location:      { type: String }
-
-source:
-  pipeline: pipelines/career/
-  refresh: monthly
-  parquet: "huggingface.co/datasets/speakerdata/people-career"
-
-build_notes: |
-  Cherry-picked from two sources. Source A provides broader history,
-  Source B provides org_domain (78.5%) and cleaner dates.
-  CC-batched to manage memory. HTML-cleaned descriptions.
-  Deduped by (person_id, lower(title), lower(org_name), start, end).
+  person_id: string; join to people.main.speaker_person_id
+  title: string?; role title
+  start: string?; usually YYYY-MM
+  end: string?; usually YYYY-MM; null if open/current
+  org_name: string?; org name for this role
+  entity_id: string?; org entity id
+  org_domain: string?; org domain
+  roles_context: string?; long free-text role or org context
+  location: string?

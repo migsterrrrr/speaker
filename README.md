@@ -46,6 +46,28 @@ pi install git:github.com/migsterrrrr/speaker
 
 Every edge is a hop. Carry IDs between queries. The insight is never in one table — it's in the connections.
 
+## Schema
+
+Curated schema docs:
+
+```bash
+speaker schema
+speaker schema people.main
+speaker schema --all
+```
+
+Human overview:
+
+```bash
+speaker mesh
+```
+
+Raw DB metadata:
+
+```bash
+speaker query "DESCRIBE people.main"
+```
+
 ## Open data
 
 The two nuclei (`people.main`, `companies.main`) are proprietary and hosted.

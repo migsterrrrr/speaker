@@ -1,25 +1,29 @@
-name: jobs
-database: companies
-tier: open
-description: "Active job postings. Titles, categories, descriptions, locations."
-rows: 755K
-order_by: [domain, date_added]
-
+table: companies.jobs
+purpose: job postings
+grain: 1 row = 1 job posting
+keys:
+  likely_unique: url
+  useful:
+    entity_id: company entity id when present
+    linkedin_id: company LinkedIn id when present
+    domain: company domain when present
+  joins:
+    companies.main.entity_id: entity_id
+    companies.news.linkedin_id: linkedin_id
+query_hints:
+- description can be very large multi-paragraph text
+- entity_id, domain, and linkedin_id may be blank on valid rows
+- date_added and date_updated are timestamps with nanosecond precision
 columns:
-  entity_id:    { type: String, connects_to: companies.main.entity_id }
-  domain:       { type: String }
-  company_name: { type: String }
-  linkedin_id:  { type: String }
-  title:        { type: String }
-  url:          { type: String }
-  openings:     { type: UInt32 }
-  category:     { type: "LowCardinality(String)", description: "Engineering|Sales|Product|Marketing|Operations|Design|..." }
-  description:  { type: String, description: "Full job description" }
-  date_added:   { type: DateTime64 }
-  date_updated: { type: DateTime64 }
-  location:     { type: String }
-
-source:
-  pipeline: pipelines/companies/
-  refresh: monthly
-  parquet: "huggingface.co/datasets/speakerdata/companies-jobs"
+  entity_id: string?; company entity id
+  domain: string?; company domain
+  company_name: string?
+  linkedin_id: string?; company LinkedIn id
+  title: string; job title
+  url: string?; job posting URL
+  openings: int
+  category: string?; common values Others|Engineering|Sales|Product|Operations|Consultancy|Marketing|Project Management|Design
+  description: string?; long free text
+  date_added: timestamp
+  date_updated: timestamp
+  location: string?

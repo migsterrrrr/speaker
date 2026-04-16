@@ -1,26 +1,63 @@
-name: pages
-database: web
-tier: open
-description: "Company web pages. Full text, headings, contact info. Always filter by domain first."
-rows: 1.3B
-order_by: null
-note: "VIEW over websearch.pages. No sort key. Always filter by domain."
-
+table: web.pages
+purpose: crawled pages plus extracted metadata
+grain: 1 row = 1 page URL
+keys:
+  likely_unique: url
+  useful:
+    domain: best filter key; filter by domain before reading large text fields
+    url: page URL
+  joins:
+    web.links.source_domain: domain
+    web.links.target_domain: domain
+    companies.jobs.domain: domain
+    companies.news.domain: domain
+query_hints:
+- always filter by domain before selecting desc or text; this table is huge
+- domain and url may be percent-encoded for IDNs
+- several extracted metadata fields are pipe-delimited strings, not arrays
 columns:
-  domain:   { type: String, description: "⚠️ Always filter by this first" }
-  url:      { type: String }
-  title:    { type: String }
-  page_type: { type: "LowCardinality(String)" }
-  text:     { type: String, description: "Full page text" }
-  word_count: { type: UInt32 }
-  desc:     { type: String, description: "Meta description" }
-  emails:   { type: String }
-  phones:   { type: String }
-  headings: { type: String }
-  tools:    { type: String, description: "Detected tech stack" }
-  lang:     { type: "LowCardinality(String)" }
-
-source:
-  pipeline: pipelines/web/
-  refresh: quarterly
-  note: "Too large for HuggingFace (~500GB+). Hosted only."
+  domain: string; domain key
+  url: string; page URL
+  canonical: string?
+  page_type: string?; common values other|content|product|homepage|newsroom|event|identity|careers|legal|docs
+  title: string?
+  lang: string?; usually short code like ru or es
+  lang_score: float?
+  country: string?; usually short country code
+  desc: string?; description text
+  text: string?; full page text; can be very large
+  word_count: int
+  emails: string?; extracted email(s)
+  phones: string?; extracted phone(s)
+  socials: pipe_string?; extracted social URLs
+  outlinks: pipe_string?; outbound URLs
+  headings: pipe_string?; heading list, often level-prefixed like 1:Title|2:Section
+  nav: pipe_string?; navigation labels
+  tools: pipe_string?; detected tech stack/plugins
+  tag_ids: pipe_string?; extracted tag or analytics ids
+  site_name: string?
+  content_type: string?; common values article|website|product|profile; often empty
+  twitter_site: string?
+  twitter_creator: string?
+  og_locale: string?
+  org_type: string?; e.g. Organization
+  org_name: string?
+  org_phone: string?
+  org_email: string?
+  org_socials: pipe_string?; org social URLs
+  address: string?
+  postcode: string?
+  org_country: string?
+  lat: float?
+  lng: float?
+  founded: string?; extracted year/date text, not normalized
+  employees: string?; extracted size text, not normalized
+  rating: float?
+  reviews: int
+  keywords: string?; keyword text, not an array
+  hreflang_count: int
+  crawled_at: string?; crawl timestamp text
+  server: string?
+  powered_by: string?
+  server_ip: string?
+  response_ms: int

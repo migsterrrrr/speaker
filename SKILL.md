@@ -32,7 +32,21 @@ ssh root@100.74.121.1 "clickhouse-client --query \"SQL\""
 
 10 tables. 0 cost per query. Millisecond responses.
 
-SCOPE → DESCRIBE → CONTEXT → EXPLORE
+Use curated schema first:
+
+```bash
+speaker schema people.main
+speaker schema companies.main
+speaker schema web.pages
+```
+
+Use raw metadata when you need exact DB output:
+
+```bash
+speaker query "DESCRIBE people.main"
+```
+
+SCOPE → SCHEMA → CONTEXT → EXPLORE
 
 Scope the goal. Describe every table. Find who's asking in the mesh first. Then:
 

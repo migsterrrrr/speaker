@@ -6,11 +6,13 @@ set -e
 
 # --- Config ---
 VERSION="3.0.0"
-REPO_URL="https://raw.githubusercontent.com/migsterrrrr/speaker/master/cli"
-SKILL_URL="https://raw.githubusercontent.com/migsterrrrr/speaker/master/SKILL.md"
-API_URL="https://api.speaker.sh"
-CONFIG_DIR="$HOME/.speaker"
+ROOT_URL="${ROOT_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker/master}"
+REPO_URL="${REPO_URL:-$ROOT_URL/cli}"
+SKILL_URL="${SKILL_URL:-$ROOT_URL/SKILL.md}"
+API_URL="${API_URL:-https://api.speaker.sh}"
+CONFIG_DIR="${CONFIG_DIR:-$HOME/.speaker}"
 CONFIG_FILE="$CONFIG_DIR/config"
+SCHEMA_DIR="$CONFIG_DIR/tables"
 
 # --- Version check (non-blocking, background) ---
 check_version() {
@@ -25,7 +27,7 @@ check_version() {
 }
 
 cmd_update() {
-    local target
+    local target tmp_target new_ver
     target=$(command -v speaker 2>/dev/null || true)
     if [[ -z "$target" ]]; then
         echo "Error: speaker is not on PATH. Re-run the installer." >&2
@@ -37,13 +39,28 @@ cmd_update() {
     fi
 
     echo "Updating speaker CLI..."
-    curl --fail --show-error --silent --location "$REPO_URL/speaker" -o "$target"
-    chmod +x "$target"
+    tmp_target=$(mktemp)
+    if ! curl --fail --show-error --silent --location "$REPO_URL/speaker" -o "$tmp_target"; then
+        rm -f "$tmp_target"
+        echo "Error: failed to download updated CLI." >&2
+        exit 1
+    fi
+    chmod +x "$tmp_target"
+
     mkdir -p "$CONFIG_DIR"
     if ! curl --fail --show-error --silent --location "$SKILL_URL" -o "$CONFIG_DIR/SKILL.md"; then
-        echo "Warning: updated CLI, but failed to refresh $CONFIG_DIR/SKILL.md" >&2
+        rm -f "$tmp_target"
+        echo "Error: failed to refresh $CONFIG_DIR/SKILL.md" >&2
+        exit 1
     fi
-    local new_ver=$(grep '^VERSION=' "$target" | cut -d'"' -f2)
+    if ! sync_schema_docs; then
+        rm -f "$tmp_target"
+        echo "Error: failed to refresh local schema docs" >&2
+        exit 1
+    fi
+
+    mv "$tmp_target" "$target"
+    new_ver=$(grep '^VERSION=' "$target" | cut -d'"' -f2)
     echo "✓ Updated to v${new_ver}"
 }
 
@@ -73,6 +90,53 @@ require_key() {
 check_auth() {
     if [[ ! -f "$CONFIG_FILE" ]] || [[ -z "$(cat "$CONFIG_FILE")" ]]; then
         echo "Not logged in. Run 'speaker signup' or 'speaker login' first."
+        exit 1
+    fi
+}
+
+schema_artifacts() {
+    cat << 'EOF'
+_mesh.yaml|tables/_mesh.yaml
+all.yaml|tables/all.yaml
+people.main.yaml|tables/people/main.yaml
+people.career.yaml|tables/people/career.yaml
+people.education.yaml|tables/people/education.yaml
+people.contact.yaml|tables/people/contact.yaml
+people.repos.yaml|tables/people/repos.yaml
+companies.main.yaml|tables/companies/main.yaml
+companies.jobs.yaml|tables/companies/jobs.yaml
+companies.news.yaml|tables/companies/news.yaml
+web.links.yaml|tables/web/links.yaml
+web.pages.yaml|tables/web/pages.yaml
+EOF
+}
+
+sync_schema_docs() {
+    local src dst
+    mkdir -p "$SCHEMA_DIR"
+    while IFS='|' read -r dst src; do
+        [[ -z "$dst" ]] && continue
+        if ! curl --fail --show-error --silent --location "$ROOT_URL/$src" -o "$SCHEMA_DIR/$dst"; then
+            return 1
+        fi
+    done < <(schema_artifacts)
+}
+
+schema_path_for() {
+    local table="$1"
+    case "$table" in
+        people.main|people.career|people.education|people.contact|people.repos|companies.main|companies.jobs|companies.news|web.links|web.pages)
+            echo "$SCHEMA_DIR/$table.yaml"
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
+
+ensure_schema_docs() {
+    if [[ ! -d "$SCHEMA_DIR" ]]; then
+        echo "Error: local schema docs not found. Run 'speaker update'." >&2
         exit 1
     fi
 }
@@ -222,7 +286,7 @@ cmd_query() {
     local sql="$1"
 
     if [[ -z "$sql" ]]; then
-        echo "Usage: speaker query \"SELECT ...\""
+        echo "Usage: speaker query \"SQL\""
         exit 1
     fi
 
@@ -304,8 +368,34 @@ cmd_count() {
 }
 
 cmd_schema() {
-    check_auth
-    cat << 'SCHEMA'
+    local arg="$1"
+    local path
+
+    ensure_schema_docs
+
+    if [[ -z "$arg" ]]; then
+        path="$SCHEMA_DIR/_mesh.yaml"
+    elif [[ "$arg" == "--all" ]]; then
+        path="$SCHEMA_DIR/all.yaml"
+    else
+        if ! path=$(schema_path_for "$arg"); then
+            echo "Error: unknown table '$arg'" >&2
+            echo "Run 'speaker schema' to see available tables." >&2
+            exit 1
+        fi
+    fi
+
+    if [[ ! -f "$path" ]]; then
+        echo "Error: local schema file missing: $path" >&2
+        echo "Run 'speaker update'." >&2
+        exit 1
+    fi
+
+    cat "$path"
+}
+
+cmd_mesh() {
+    cat << 'MESH'
 
     THE MESH
 
@@ -332,12 +422,12 @@ cmd_schema() {
     🕸️ web.links              56M    Domain-to-domain link graph
     📄 web.pages             1.3B    Company web pages (filter by domain)
 
-    Use DESCRIBE database.table for full column list.
-    Hops not JOINs. Carry IDs between queries.
+    Use 'speaker schema <database.table>' for curated YAML.
+    Use 'speaker query "DESCRIBE database.table"' for raw metadata.
 
     more queries = more signal
 
-SCHEMA
+MESH
 }
 
 cmd_help() {
@@ -351,7 +441,10 @@ COMMANDS:
   speaker status                  Check account status by email
   speaker query "SQL"             Run a SQL query
   speaker count                   Total people
-  speaker schema                  Show the mesh
+  speaker schema                  Print mesh schema YAML
+  speaker schema people.main      Print one table schema YAML
+  speaker schema --all            Print bundled schema YAML
+  speaker mesh                    Show the mesh overview
   speaker logout                  Remove credentials
   speaker update                  Update to latest version
 
@@ -383,10 +476,11 @@ case "$CMD" in
     update)         cmd_update ; exit 0 ;;
     query|q)        cmd_query "$2" ;;
     count|c)        cmd_count ;;
-    schema|s)       cmd_schema ;;
+    schema|s)       cmd_schema "$2" ;;
+    mesh|m)         cmd_mesh ;;
     help|--help|-h) cmd_help ;;
     *)
-        if [[ "$CMD" =~ ^[Ss][Ee][Ll][Ee][Cc][Tt] ]]; then
+        if [[ "$CMD" =~ ^[Ss][Ee][Ll][Ee][Cc][Tt] ]] || [[ "$CMD" =~ ^[Dd][Ee][Ss][Cc][Rr][Ii][Bb][Ee] ]]; then
             cmd_query "$CMD"
         else
             echo "Unknown command: $CMD"

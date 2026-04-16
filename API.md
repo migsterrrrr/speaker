@@ -114,7 +114,7 @@ Response:
 }
 ```
 
-For full column schemas of each table, see `tables/*.yaml` in the repo, or use `DESCRIBE database.table` at query time.
+For full column schemas of each table, see `tables/<database>/<table>.yaml` in the repo, use `speaker schema <database.table>` in the CLI, or use `DESCRIBE database.table` at query time.
 
 ---
 

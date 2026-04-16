@@ -1,0 +1,36 @@
+version: 1
+purpose: compact LLM-oriented schema notes for Speaker tables
+conventions:
+  string: scalar string; may still be empty unless noted otherwise
+  string?: nullable or frequently empty string
+  string[]: real JSON array of strings
+  float[]: real JSON array of floats
+  date: returned as YYYY-MM-DD
+  datetime: returned as YYYY-MM-DD HH:MM:SS
+  timestamp: returned as YYYY-MM-DD HH:MM:SS.fffffffff
+  pipe_string?: string with | delimiter; not an array
+core_hops:
+  people.main.speaker_person_id:
+  - people.career.person_id
+  - people.education.speaker_person_id
+  - people.contact.speaker_person_id
+  - people.repos.speaker_person_id
+  companies.main.entity_id:
+  - companies.jobs.entity_id
+  - companies.news.entity_id
+  - web.links.source_entity_id
+  - web.links.target_entity_id
+  companies.main.website: normalize to a bare domain before matching companies.jobs.domain, companies.news.domain, web.links.source_domain,
+    web.links.target_domain, or web.pages.domain
+  companies.jobs.linkedin_id: can match companies.news.linkedin_id
+files:
+  people.main: people.main.yaml
+  people.career: people.career.yaml
+  people.education: people.education.yaml
+  people.contact: people.contact.yaml
+  people.repos: people.repos.yaml
+  companies.main: companies.main.yaml
+  companies.jobs: companies.jobs.yaml
+  companies.news: companies.news.yaml
+  web.links: web.links.yaml
+  web.pages: web.pages.yaml

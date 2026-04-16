@@ -1,25 +1,19 @@
-name: education
-database: people
-tier: open
-description: "Full education history. Schools, degrees, fields of study."
-rows: 333M
-order_by: [speaker_person_id, start]
-
+table: people.education
+purpose: education history
+grain: 1 row = 1 education record
+keys:
+  useful:
+    speaker_person_id: person id
+  joins:
+    people.main.speaker_person_id: speaker_person_id
+query_hints:
+- start and end are strings, usually YYYY-MM, not Date columns
+- degree and field_of_study can be empty even when school exists
 columns:
-  speaker_person_id: { type: String, connects_to: people.main.speaker_person_id }
-  school:            { type: String }
-  degree:            { type: String, description: "Raw degree string" }
-  degree_level:      { type: "LowCardinality(String)", description: "PhD|Master|Bachelor|Associate|Diploma|High School|Certificate|Other" }
-  field_of_study:    { type: String, description: "Extracted discipline in English" }
-  start:             { type: String, description: "YYYY or YYYY-MM" }
-  end:               { type: String, description: "YYYY or YYYY-MM" }
-
-source:
-  pipeline: pipelines/education/
-  refresh: monthly
-  parquet: "huggingface.co/datasets/speakerdata/people-education"
-
-build_notes: |
-  190K unique degree strings classified via LLM (Gemini Flash + Qwen 35B).
-  Degree level + field of study extracted. Multilingual normalization automatic.
-  degree_category_map is the frozen lookup table.
+  speaker_person_id: string; join to people.main.speaker_person_id
+  school: string?
+  degree: string?
+  degree_level: string?; examples Bachelor|Master|Certificate
+  field_of_study: string?
+  start: string?; usually YYYY-MM
+  end: string?; usually YYYY-MM

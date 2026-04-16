@@ -5,9 +5,11 @@ set -eu
 
 REPO="${REPO:-migsterrrrr/speaker}"
 REF="${REF:-master}"
-BASE_URL="${BASE_URL:-https://raw.githubusercontent.com/$REPO/$REF/cli}"
-SKILL_URL="${SKILL_URL:-https://raw.githubusercontent.com/$REPO/$REF/SKILL.md}"
+ROOT_URL="${ROOT_URL:-https://raw.githubusercontent.com/$REPO/$REF}"
+BASE_URL="${BASE_URL:-$ROOT_URL/cli}"
+SKILL_URL="${SKILL_URL:-$ROOT_URL/SKILL.md}"
 CONFIG_DIR="${CONFIG_DIR:-$HOME/.speaker}"
+SCHEMA_DIR="$CONFIG_DIR/tables"
 
 fail() {
   echo "Error: $1" >&2
@@ -17,6 +19,7 @@ fail() {
 cleanup() {
   [ -n "${TMP_SPEAKER:-}" ] && rm -f "$TMP_SPEAKER"
   [ -n "${TMP_DOCS:-}" ] && rm -f "$TMP_DOCS"
+  [ -n "${TMP_SCHEMA_DIR:-}" ] && rm -rf "$TMP_SCHEMA_DIR"
 }
 
 download() {
@@ -69,6 +72,23 @@ path_has_dir() {
   esac
 }
 
+schema_artifacts() {
+  cat <<'EOF'
+_mesh.yaml|tables/_mesh.yaml
+all.yaml|tables/all.yaml
+people.main.yaml|tables/people/main.yaml
+people.career.yaml|tables/people/career.yaml
+people.education.yaml|tables/people/education.yaml
+people.contact.yaml|tables/people/contact.yaml
+people.repos.yaml|tables/people/repos.yaml
+companies.main.yaml|tables/companies/main.yaml
+companies.jobs.yaml|tables/companies/jobs.yaml
+companies.news.yaml|tables/companies/news.yaml
+web.links.yaml|tables/web/links.yaml
+web.pages.yaml|tables/web/pages.yaml
+EOF
+}
+
 command -v curl >/dev/null 2>&1 || fail "curl is required"
 command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
 
@@ -80,6 +100,7 @@ mkdir -p "$BINDIR" || fail "Could not create bin directory: $BINDIR"
 
 TMP_SPEAKER="$(mktemp)"
 TMP_DOCS="$(mktemp)"
+TMP_SCHEMA_DIR="$(mktemp -d)"
 trap cleanup EXIT INT TERM HUP
 
 echo "Installing speaker CLI from $REPO@$REF..."
@@ -87,7 +108,13 @@ echo "Installing speaker CLI from $REPO@$REF..."
 download "$BASE_URL/speaker" "$TMP_SPEAKER"
 download "$SKILL_URL" "$TMP_DOCS"
 
+schema_artifacts | while IFS='|' read -r dst src; do
+  [ -n "$dst" ] || continue
+  download "$ROOT_URL/$src" "$TMP_SCHEMA_DIR/$dst"
+done
+
 mkdir -p "$CONFIG_DIR"
+mkdir -p "$SCHEMA_DIR"
 
 cp "$TMP_SPEAKER" "$TARGET"
 chmod 755 "$TARGET"
@@ -95,9 +122,13 @@ chmod 755 "$TARGET"
 cp "$TMP_DOCS" "$CONFIG_DIR/SKILL.md"
 chmod 644 "$CONFIG_DIR/SKILL.md"
 
+cp "$TMP_SCHEMA_DIR"/*.yaml "$SCHEMA_DIR/"
+chmod 644 "$SCHEMA_DIR"/*.yaml
+
 echo ""
 echo "  ✓ speaker installed to $TARGET"
 echo "  ✓ Agent docs saved to $CONFIG_DIR/SKILL.md"
+echo "  ✓ Schema docs saved to $SCHEMA_DIR"
 if ! path_has_dir "$BINDIR"; then
   echo ""
   echo "  Add this to your shell profile so 'speaker' is on PATH:"

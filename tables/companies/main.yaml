@@ -1,29 +1,40 @@
-name: main
-database: companies
-tier: proprietary
-description: "The companies nucleus. 3.7M companies with AI-synthesized profiles."
-rows: 3.7M
-order_by: [country, entity_id]
-
+table: companies.main
+purpose: canonical company profile
+grain: 1 row = 1 company
+keys:
+  primary: entity_id
+  useful:
+    website: company website, usually a bare domain
+    name: company name
+  joins:
+    companies.jobs.entity_id: entity_id
+    companies.news.entity_id: entity_id
+    web.links.source_entity_id: entity_id
+    web.links.target_entity_id: entity_id
+query_hints:
+- keywords, offerings, customer_types, and naics_codes are real JSON arrays
+- website is usually a bare domain, not a full URL
+- embedding is a dense float vector; usually ignore unless doing similarity work
 columns:
-  entity_id:      { type: String, description: "spk_ — universal company key" }
-  name:           { type: String }
-  summary:        { type: String, description: "AI-generated description" }
-  keywords:       { type: "Array(String)", description: "What they do. has() / hasAny() queryable." }
-  offerings:      { type: "Array(String)", description: "Products/services" }
-  market:         { type: "LowCardinality(String)", description: "b2b|b2c|b2b2c|b2g" }
-  customer_types: { type: "Array(String)" }
-  naics_codes:    { type: "Array(String)" }
-  business_model: { type: "LowCardinality(String)", description: "subscription|fees|sales|consulting|retail|manufacturing|..." }
-  headcount:      { type: UInt32 }
-  size:           { type: Enum, description: "solo|micro|small|medium|large|enterprise" }
-  founded:        { type: UInt16 }
-  country:        { type: "LowCardinality(String)", description: "ISO 2-letter" }
-  region:         { type: String }
-  city:           { type: String }
-  address:        { type: String }
-  lat:            { type: Float32 }
-  lng:            { type: Float32 }
-  website:        { type: String, description: "Primary domain (bare: stripe.com)" }
-  reputation:     { type: Float32, description: "Authority score 0-1" }
-  last_updated:   { type: Date }
+  entity_id: string; canonical company id
+  name: string
+  summary: string?
+  keywords: string[]
+  offerings: string[]
+  market: string?; common values b2b|b2c|b2b2c|b2g
+  customer_types: string[]
+  naics_codes: string[]; code:label strings
+  business_model: string?; common values other|subscription|fees|sales|services|nonprofit|commission|manufacturing|retail|distribution
+  headcount: int
+  size: string; values solo|micro|small|medium|large|enterprise
+  founded: int?; year
+  country: string?; usually a short country code like es
+  region: string?
+  city: string?
+  address: string?
+  lat: float?
+  lng: float?
+  website: string?; usually bare domain
+  embedding: float[]; dense vector
+  reputation: float
+  last_updated: date

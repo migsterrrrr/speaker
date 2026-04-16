@@ -1,29 +1,40 @@
-name: main
-database: people
-tier: proprietary
-description: "The people nucleus. 818M professionals with identity, current role, skills, education summary, and scores."
-rows: 818M
-order_by: [country, speaker_person_id]
-
+table: people.main
+purpose: canonical person profile snapshot
+grain: 1 row = 1 person
+keys:
+  primary: speaker_person_id
+  useful:
+    entity_id: current org entity id
+    org_domain: current org domain
+    org_slug: current org slug; can be text or numeric-like
+  joins:
+    people.education.speaker_person_id: speaker_person_id
+    people.contact.speaker_person_id: speaker_person_id
+    people.repos.speaker_person_id: speaker_person_id
+    people.career.person_id: speaker_person_id
+query_hints:
+- treat this as the current snapshot, not full career history
+- arrays are real JSON arrays
+- country is usually a short country code like us
 columns:
-  speaker_person_id: { type: String, description: "spkp_ + 20 hex. Universal person key." }
-  first:             { type: String }
-  last:              { type: String }
-  country:           { type: "LowCardinality(String)", description: "ISO 2-letter" }
-  location:          { type: String, description: "Free text: 'San Francisco Bay Area'" }
-  title:             { type: String, description: "Current job title" }
-  org:               { type: String, description: "Current employer" }
-  org_slug:          { type: String, description: "Company LinkedIn slug" }
-  org_domain:        { type: String, description: "Company website domain" }
-  entity_id:         { type: String, connects_to: companies.main.entity_id, description: "16% fill" }
-  seniority:         { type: "LowCardinality(String)", description: "c_suite|vp|director|manager|senior_ic|ic" }
-  track:             { type: "LowCardinality(String)", description: "manager|individual" }
-  influencer_score:  { type: Float32, description: "Network influence 0-1" }
-  depth:             { type: Float32, description: "Profile completeness 0-1" }
-  last_updated:      { type: Date }
-  technologies:      { type: "Array(String)", description: "Technical skills. has() / hasAny() queryable." }
-  domain_knowledge:  { type: "Array(String)", description: "Professional expertise areas." }
-  credentials:       { type: "Array(String)", description: "Certifications, licenses." }
-  languages:         { type: "Array(String)", description: "Spoken languages." }
-  highest_degree:    { type: "LowCardinality(String)", description: "PhD|Master|Bachelor|Associate|Diploma|High School|Certificate" }
-  school:            { type: String, description: "School for highest degree" }
+  speaker_person_id: string; canonical person id
+  first: string
+  last: string
+  country: string?; usually a short country code like us
+  location: string?
+  title: string?; current role title
+  org: string?; current org name
+  org_slug: string?; current org slug; can be text or numeric-like
+  org_domain: string?; current org domain
+  entity_id: string?; current org entity id
+  seniority: string?; common values ic|manager|c_suite|senior_ic|director|vp
+  track: string?; common values individual|manager
+  influencer_score: float
+  depth: float
+  last_updated: date
+  technologies: string[]
+  domain_knowledge: string[]
+  credentials: string[]
+  languages: string[]
+  highest_degree: string?
+  school: string?

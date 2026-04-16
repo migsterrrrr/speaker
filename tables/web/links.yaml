@@ -1,17 +1,19 @@
-name: links
-database: web
-tier: open
-description: "Domain-to-domain link graph. Who links to who and how often."
-rows: 56M
-order_by: [target_domain, source_domain]
-
+table: web.links
+purpose: domain-to-domain link graph
+grain: 1 row = 1 source_domain -> target_domain edge
+keys:
+  useful:
+    source_entity_id: source company entity id when present
+    source_domain: source domain
+    target_entity_id: target company entity id when present
+    target_domain: target domain
+query_hints:
+- page_count is the number of source pages linking to the target domain
+- source_entity_id and target_entity_id may be blank
+- best for graph hops and domain relationship analysis, not page-level content
 columns:
-  source_entity_id: { type: String, connects_to: companies.main.entity_id }
-  source_domain:    { type: String }
-  target_domain:    { type: String }
-  page_count:       { type: UInt32, description: "How many pages contain this link" }
-
-source:
-  pipeline: pipelines/web/
-  refresh: quarterly
-  parquet: "huggingface.co/datasets/speakerdata/web-links"
+  source_entity_id: string?; source company entity id
+  source_domain: string; source domain
+  target_domain: string; target domain
+  target_entity_id: string?; target company entity id
+  page_count: int

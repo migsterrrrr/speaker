@@ -1,0 +1,41 @@
+version: 3.1.3
+purpose: "legacy schema compatibility index for Speaker <=3.0 clients"
+deprecated: true
+compatibility_note: "These paths are kept so old `speaker update` clients can refresh local schema docs and install the newer CLI. Use the replacement tables below for new work."
+new_mesh_file: mesh.yaml
+replacements:
+  people.main:
+    replaced_by: people.nucleus
+    schema_file: tables/people/nucleus.yaml
+  people.career:
+    replaced_by: people.roles_history
+    schema_file: tables/people/roles_history.yaml
+  people.contact:
+    replaced_by: people.contacts
+    schema_file: tables/people/contacts.yaml
+  companies.main:
+    replaced_by: companies.nucleus
+    schema_file: tables/companies/nucleus.yaml
+  companies.news:
+    replaced_by: companies.posts
+    schema_file: tables/companies/posts.yaml
+  web.links:
+    replaced_by: companies.web_outlinks
+    schema_file: tables/companies/web_outlinks.yaml
+current_tables:
+  people.nucleus: tables/people/nucleus.yaml
+  people.contacts: tables/people/contacts.yaml
+  people.roles_history: tables/people/roles_history.yaml
+  people.education: tables/people/education.yaml
+  people.repos: tables/people/repos.yaml
+  companies.nucleus: tables/companies/nucleus.yaml
+  companies.identifiers: tables/companies/identifiers.yaml
+  companies.metrics: tables/companies/metrics.yaml
+  companies.industry_keywords: tables/companies/industry_keywords.yaml
+  companies.jobs: tables/companies/jobs.yaml
+  companies.posts: tables/companies/posts.yaml
+  companies.competitors: tables/companies/competitors.yaml
+  companies.funding_rounds: tables/companies/funding_rounds.yaml
+  companies.web_outlinks: tables/companies/web_outlinks.yaml
+  web.domain_entity_bridge: tables/web/domain_entity_bridge.yaml
+  web.pages: tables/web/pages.yaml

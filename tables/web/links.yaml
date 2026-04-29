@@ -1,0 +1,5 @@
+deprecated_table: web.links
+replaced_by: companies.web_outlinks
+replacement_schema_file: tables/companies/web_outlinks.yaml
+replacement_command: "speaker schema companies.web_outlinks"
+compatibility_note: "This legacy path is kept so Speaker <=3.0 clients can run `speaker update`. Use companies.web_outlinks for company website outlink evidence."

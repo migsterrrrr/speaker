@@ -1,0 +1,5 @@
+deprecated_table: people.contact
+replaced_by: people.contacts
+replacement_schema_file: tables/people/contacts.yaml
+replacement_command: "speaker schema people.contacts"
+compatibility_note: "This legacy path is kept so Speaker <=3.0 clients can run `speaker update`. Use people.contacts for new work."

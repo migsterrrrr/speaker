@@ -1,0 +1,5 @@
+deprecated_table: people.main
+replaced_by: people.nucleus
+replacement_schema_file: tables/people/nucleus.yaml
+replacement_command: "speaker schema people.nucleus"
+compatibility_note: "This legacy path is kept so Speaker <=3.0 clients can run `speaker update`. Use people.nucleus for new work."

@@ -1,0 +1,5 @@
+deprecated_table: people.career
+replaced_by: people.roles_history
+replacement_schema_file: tables/people/roles_history.yaml
+replacement_command: "speaker schema people.roles_history"
+compatibility_note: "This legacy path is kept so Speaker <=3.0 clients can run `speaker update`. Use people.roles_history for new work."

@@ -1,0 +1,172 @@
+table: companies.industry_keywords
+purpose: "company industry, taxonomy, and keyword signals"
+grain: "1 row = 1 company/entity with taxonomy signals"
+estimated_rows: "22.71 million"
+row_count: 22707836
+row_identity: "entity_id"
+graph_keys:
+  entity_id: "Speaker company/entity id."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "entity_id"
+  primary_key: "entity_id"
+  partition_by: null
+  fast_where:
+    - where: "entity_id = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "entity_id IN (...)"
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "taxonomy array filters without entity_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
+  entity_id:
+    - companies.nucleus.entity_id
+    - companies.metrics.entity_id
+    - companies.identifiers.entity_id
+query_notes:
+  - "Use entity_id to enrich known companies."
+  - "Array fields are useful for taxonomy filters but broad scans can be expensive."
+columns:
+  - name: entity_id
+    type: "String"
+    note: "Speaker company/entity id; carry across companies.* and web entity tables."
+    fill:
+      rows: 22707836
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: li_industry
+    type: "LowCardinality(String)"
+    fill:
+      rows: 22502072
+      pct: 99.0939
+      missing_rows: 205764
+      definition: "non-empty string"
+      stats: "exact"
+  - name: li_industries
+    type: "Array(String)"
+    fill:
+      rows: 22501958
+      pct: 99.0934
+      missing_rows: 205878
+      definition: "array length > 0"
+      stats: "exact"
+  - name: li_specialities
+    type: "Array(String)"
+    fill:
+      rows: 6112026
+      pct: 26.9159
+      missing_rows: 16595810
+      definition: "array length > 0"
+      stats: "exact"
+  - name: crunchbase_categories
+    type: "Array(String)"
+    fill:
+      rows: 2982903
+      pct: 13.136
+      missing_rows: 19724933
+      definition: "array length > 0"
+      stats: "exact"
+  - name: naics_code
+    type: "String"
+    fill:
+      rows: 4383965
+      pct: 19.306
+      missing_rows: 18323871
+      definition: "non-empty string"
+      stats: "exact"
+  - name: naics_year
+    type: "UInt16"
+    fill:
+      rows: 22707836
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 4383965
+      nonzero_pct: 19.306
+  - name: naics_sector
+    type: "LowCardinality(String)"
+    fill:
+      rows: 4383965
+      pct: 19.306
+      missing_rows: 18323871
+      definition: "non-empty string"
+      stats: "exact"
+  - name: naics_sub_sector
+    type: "LowCardinality(String)"
+    fill:
+      rows: 4383965
+      pct: 19.306
+      missing_rows: 18323871
+      definition: "non-empty string"
+      stats: "exact"
+  - name: naics_industry_group
+    type: "String"
+    fill:
+      rows: 4383965
+      pct: 19.306
+      missing_rows: 18323871
+      definition: "non-empty string"
+      stats: "exact"
+  - name: naics_industry
+    type: "String"
+    fill:
+      rows: 4383965
+      pct: 19.306
+      missing_rows: 18323871
+      definition: "non-empty string"
+      stats: "exact"
+  - name: sic_codes
+    type: "Array(String)"
+    fill:
+      rows: 4383278
+      pct: 19.3029
+      missing_rows: 18324558
+      definition: "array length > 0"
+      stats: "exact"
+  - name: sic_years
+    type: "Array(UInt16)"
+    fill:
+      rows: 4383278
+      pct: 19.3029
+      missing_rows: 18324558
+      definition: "array length > 0"
+      stats: "exact"
+  - name: sic_industries
+    type: "Array(String)"
+    fill:
+      rows: 4383278
+      pct: 19.3029
+      missing_rows: 18324558
+      definition: "array length > 0"
+      stats: "exact"
+  - name: taxonomy_source_families
+    type: "Array(String)"
+    fill:
+      rows: 22707836
+      pct: 100.0
+      missing_rows: 0
+      definition: "array length > 0"
+      stats: "exact"
+  - name: taxonomy_signal_count
+    type: "UInt32"
+    fill:
+      rows: 22707836
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 22707836
+      nonzero_pct: 100.0
+  - name: updated_on
+    type: "Date"
+    fill:
+      rows: 22707836
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"

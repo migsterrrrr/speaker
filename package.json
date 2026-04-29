@@ -1,7 +1,7 @@
 {
   "name": "speaker",
-  "version": "0.1.0",
-  "description": "Professional intelligence mesh for agents. 818M people. 3.7M companies.",
+  "version": "0.2.0",
+  "description": "SQL-native professional intelligence for agents. 825M people. 26M companies."
   "pi": {
     "skills": ["./SKILL.md"]
   }

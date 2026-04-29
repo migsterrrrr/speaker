@@ -2,24 +2,27 @@
 # Copy this directory to contrib/your-table-name/ and fill in.
 
 name: your_table
-database: your_database       # e.g. events, patents, funding
+database: your_database       # e.g. events, patents, research
 tier: contrib
 description: "What this table contains."
-rows: ?
-order_by: [?]
+rows: null
+order_by: []
 
 columns:
-  # At least one column MUST connect to the mesh:
-  entity_id:    { type: String, connects_to: companies.main.entity_id }
+  # At least one column SHOULD connect to the public graph:
+  entity_id:   { type: String, connects_to: companies.nucleus.entity_id }
   # OR
-  # person_id:  { type: String, connects_to: people.main.speaker_person_id }
+  # person_id: { type: String, connects_to: people.nucleus.person_id }
+  # OR
+  # domain:    { type: String, connects_to: web.domain_entity_bridge.domain }
 
   # Your columns:
-  # name:       { type: String }
-  # date:       { type: Date }
+  # name:      { type: String }
+  # date:      { type: Date }
+  # url:       { type: String }
   # ...
 
 source:
-  origin: "Where the data comes from (must be public)"
+  origin: "Where the data comes from (must be public if a pipeline is included)"
   pipeline: "contrib/your-table-name/pipeline.py"
   refresh: monthly

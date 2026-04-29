@@ -1,25 +1,102 @@
 table: people.education
-purpose: education history
-grain: 1 row = 1 education record
-keys:
-  useful:
-    speaker_person_id: person id
-hop_keys:
-  speaker_person_id:
-    note: person nucleus id
-    carry_to:
-    - people.main.speaker_person_id
-    - people.career.person_id
-    - people.contact.speaker_person_id
-    - people.repos.speaker_person_id
-query_hints:
-- start and end are strings, usually YYYY-MM, not Date columns
-- degree and field_of_study can be empty even when school exists
+purpose: "person education history"
+grain: "1 row = 1 education record"
+estimated_rows: "333.03 million"
+row_count: 333033287
+row_identity: "edu_id"
+graph_keys:
+  person_id: "Speaker person id; hop across people.* tables."
+  edu_id: "Speaker education row id."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "person_id, edu_id"
+  primary_key: "person_id"
+  partition_by: null
+  fast_where:
+    - where: "person_id = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "person_id IN (...)"
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "person_id = ... AND edu_id = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "edu_id = ... without person_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+    - where: "school/degree searches without person_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
+  person_id:
+    - people.nucleus.person_id
+    - people.contacts.person_id
+    - people.roles_history.person_id
+query_notes:
+  - "edu_id identifies one education row, but the physical access path starts with person_id."
+  - "Use person_id to fetch education after finding people."
 columns:
-  speaker_person_id: string; hop to people.main.speaker_person_id
-  school: string?
-  degree: string?
-  degree_level: string?; examples Bachelor|Master|Certificate
-  field_of_study: string?
-  start: string?; usually YYYY-MM
-  end: string?; usually YYYY-MM
+  - name: person_id
+    type: "String"
+    note: "Speaker person id; carry across people.* tables."
+    fill:
+      rows: 322521195
+      pct: 96.8435
+      missing_rows: 10512092
+      definition: "non-empty string"
+      stats: "exact"
+  - name: edu_id
+    type: "String"
+    note: "Speaker education row id."
+    fill:
+      rows: 333033287
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: school
+    type: "String"
+    fill:
+      rows: 333029966
+      pct: 99.999
+      missing_rows: 3321
+      definition: "non-empty string"
+      stats: "exact"
+  - name: degree
+    type: "String"
+    fill:
+      rows: 308415990
+      pct: 92.6082
+      missing_rows: 24617297
+      definition: "non-empty string"
+      stats: "exact"
+  - name: degree_level
+    type: "LowCardinality(String)"
+    fill:
+      rows: 83035313
+      pct: 24.933
+      missing_rows: 249997974
+      definition: "non-empty string"
+      stats: "exact"
+  - name: field_of_study
+    type: "String"
+    fill:
+      rows: 76708200
+      pct: 23.0332
+      missing_rows: 256325087
+      definition: "non-empty string"
+      stats: "exact"
+  - name: start
+    type: "String"
+    fill:
+      rows: 333033287
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: end
+    type: "String"
+    fill:
+      rows: 333033287
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"

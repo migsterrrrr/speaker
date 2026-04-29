@@ -1,26 +1,708 @@
-name: speaker
-version: 0.1.0
-description: "Professional intelligence mesh. 818M people. 3.7M companies. Agent-first."
+version: 2
+purpose: "public Speaker mesh graph: nodes, edges, keys, and ClickHouse access notes"
+audience: "AI agents/data engineers familiar with ClickHouse"
+schema_base: "tables/ in this repo; ~/.speaker/tables/ when installed by the CLI"
+core_rule: "Hops, not broad joins. Query one table, carry person_id/entity_id/domain, then query the next table."
 
-nuclei:
-  - people.main
-  - companies.main
+graph_visual: |
+  PROFESSIONAL GRAPH
+  source-of-truth nuclei + flat sidecars
 
-tables:
-  proprietary:
-    - tables/people/main.yaml
-    - tables/companies/main.yaml
-  open:
-    - tables/people/career.yaml
-    - tables/people/education.yaml
-    - tables/people/contact.yaml
-    - tables/people/repos.yaml
-    - tables/companies/jobs.yaml
-    - tables/companies/news.yaml
-    - tables/web/links.yaml
-    - tables/web/pages.yaml
-  build:
-    - tables/build/skill_category_map.yaml
-    - tables/build/degree_category_map.yaml
-  contrib:
-    - contrib/*/main.yaml
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │ PEOPLE NUCLEUS                                                       │
+  │ people.nucleus = source of truth for professional people             │
+  │ key: person_id                                                       │
+  │ sidecars: people.contacts | people.roles_history | people.education  │
+  │           people.repos                                               │
+  └──────────────────────────┬───────────────────────────────────────────┘
+                             │ current_company_id
+                             │ roles_history.speaker_company_id
+                             ▼ entity_id
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │ COMPANIES NUCLEUS                                                    │
+  │ companies.nucleus = source of truth for professional companies       │
+  │ key: entity_id                                                       │
+  │ sidecars: identifiers | metrics | industry_keywords | jobs | posts   │
+  │           competitors | funding_rounds | web_outlinks                │
+  └──────────────────────────┬───────────────────────────────────────────┘
+                             │ website / domain / outlink domains
+                             ▼ domain
+  ┌──────────────────────────────────────────────────────────────────────┐
+  │ WEB GRAPH                                                            │
+  │ web.domain_entity_bridge = domain -> entity_id resolver              │
+  │ web.pages = page evidence by domain                                  │
+  │ key: domain                                                          │
+  └──────────────────────────────────────────────────────────────────────┘
+
+clickhouse_semantics:
+  order_by: "Physical MergeTree sort key. Leftmost-prefix predicates prune best."
+  primary_key: "Sparse ClickHouse primary index expression; not a uniqueness constraint."
+  fast_where: "WHERE shapes that align with ORDER BY left prefix; not separate secondary indexes."
+  graph_edge: "Semantic key compatibility between tables; not automatically a fast lookup in both directions."
+
+identity_keys:
+  person_id:
+    meaning: "Speaker person id. Canonical person graph key."
+    canonical_table: people.nucleus
+    canonical_column: person_id
+    example_tables:
+      - people.nucleus.person_id
+      - people.contacts.person_id
+      - people.roles_history.person_id
+      - people.education.person_id
+      - people.repos.person_id
+  entity_id:
+    meaning: "Speaker company/entity id. Canonical company graph key."
+    canonical_table: companies.nucleus
+    canonical_column: entity_id
+    appears_as:
+      - companies.nucleus.entity_id
+      - companies.identifiers.entity_id
+      - companies.metrics.entity_id
+      - companies.industry_keywords.entity_id
+      - companies.jobs.entity_id
+      - companies.posts.entity_id
+      - companies.competitors.entity_id
+      - companies.funding_rounds.entity_id
+      - companies.web_outlinks.source_entity_id
+      - companies.web_outlinks.target_entity_id
+      - people.nucleus.current_company_id
+      - people.roles_history.speaker_company_id
+      - web.pages.entity_id
+      - web.domain_entity_bridge.entity_id
+  domain:
+    meaning: "Normalized domain. Web/company fallback key when entity_id is unknown or when entering from the web."
+    preferred_resolver: web.domain_entity_bridge
+    appears_as:
+      - companies.nucleus.website
+      - companies.identifiers.website_domain
+      - web.domain_entity_bridge.domain
+      - web.pages.domain
+      - companies.web_outlinks.source_domain
+      - companies.web_outlinks.target_domain
+      - companies.competitors.competitor_domain
+
+nodes:
+  people.nucleus:
+    role: "person nucleus / current profile snapshot"
+    grain: "1 row = 1 person"
+    row_count: 825412717
+    row_identity: person_id
+    order_by: person_id
+    schema_file: people/nucleus.yaml
+    fast_entrypoints:
+      - "person_id = ..."
+      - "person_id IN (...)"
+    graph_outputs:
+      - person_id
+      - current_company_id
+    notes:
+      - "Use for current person identity, title, seniority, location, and current company id."
+      - "current_company_id is graph-useful but not ORDER BY-prefix fast on this table."
+  people.contacts:
+    role: "person contact/social sidecar"
+    grain: "1 row = 1 person"
+    row_count: 825412717
+    row_identity: person_id
+    order_by: person_id
+    schema_file: people/contacts.yaml
+    fast_entrypoints:
+      - "person_id = ..."
+      - "person_id IN (...)"
+    graph_outputs:
+      - person_id
+    notes:
+      - "Use after finding people; contact fields are sparse."
+  people.roles_history:
+    role: "person role/career history"
+    grain: "1 row = 1 person-role"
+    row_count: 989378504
+    row_identity: speaker_role_id
+    order_by: "person_id, start_date, end_date, speaker_company_id, speaker_role_id"
+    schema_file: people/roles_history.yaml
+    fast_entrypoints:
+      - "person_id = ..."
+      - "person_id IN (...)"
+    graph_outputs:
+      - person_id
+      - speaker_company_id
+    notes:
+      - "Use for career history after finding person_id."
+      - "speaker_company_id is graph-valid but company-only role lookups are not ORDER BY-prefix fast."
+      - "Use current_status for current/past/unknown instead of inferring only from end_date."
+  people.education:
+    role: "person education history"
+    grain: "1 row = 1 education record"
+    row_count: 333033287
+    row_identity: edu_id
+    order_by: "person_id, edu_id"
+    schema_file: people/education.yaml
+    fast_entrypoints:
+      - "person_id = ..."
+      - "person_id = ... AND edu_id = ..."
+    graph_outputs:
+      - person_id
+    notes:
+      - "Use after finding person_id."
+  people.repos:
+    role: "GitHub repository table with optional person link"
+    grain: "1 row = 1 GitHub repository"
+    row_count: 40061390
+    row_identity: "owner, repo"
+    order_by: "owner, repo"
+    schema_file: people/repos.yaml
+    fast_entrypoints:
+      - "owner = ..."
+      - "owner = ... AND repo = ..."
+    graph_outputs:
+      - person_id
+      - owner
+      - repo
+    notes:
+      - "Fast for GitHub owner/repo lookup."
+      - "person_id is graph-valid but not ORDER BY-prefix fast here."
+
+  companies.nucleus:
+    role: "company nucleus / profile snapshot"
+    grain: "1 row = 1 company/entity"
+    row_count: 26323167
+    row_identity: entity_id
+    order_by: entity_id
+    schema_file: companies/nucleus.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id IN (...)"
+    graph_outputs:
+      - entity_id
+      - website
+    notes:
+      - "Use for canonical company identity, summary, coarse keywords, headcount, website, and location."
+      - "Use sidecars for identifiers, metrics, taxonomy, jobs, posts, competitors, funding, and web outlinks."
+  companies.identifiers:
+    role: "company web/social/profile identifiers"
+    grain: "1 row = 1 company/entity"
+    row_count: 26323167
+    row_identity: entity_id
+    order_by: entity_id
+    schema_file: companies/identifiers.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id IN (...)"
+    graph_outputs:
+      - entity_id
+      - website_domain
+    notes:
+      - "Use to enrich a known entity_id with domains and public profile URLs."
+      - "website_domain is a graph/domain fallback but not the ORDER BY prefix."
+  companies.metrics:
+    role: "company numeric metrics and growth signals"
+    grain: "1 row = 1 company/entity"
+    row_count: 26323167
+    row_identity: entity_id
+    order_by: entity_id
+    schema_file: companies/metrics.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id IN (...)"
+    graph_outputs:
+      - entity_id
+    notes:
+      - "Use after entity_id to add headcount, traffic, SEO, review, funding, hiring, and growth metrics."
+  companies.industry_keywords:
+    role: "company taxonomy/facet sidecar"
+    grain: "1 row = 1 company/entity with taxonomy signals"
+    row_count: 22707836
+    row_identity: entity_id
+    order_by: entity_id
+    schema_file: companies/industry_keywords.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id IN (...)"
+    graph_outputs:
+      - entity_id
+    notes:
+      - "Use for richer industry/taxonomy evidence than companies.nucleus.keywords."
+      - "Broad taxonomy scans can be expensive; prefer entity_id enrichment when possible."
+  companies.jobs:
+    role: "company job postings"
+    grain: "1 row = 1 job posting"
+    row_count: 838846
+    row_identity: job_id
+    order_by: "entity_id, job_id"
+    schema_file: companies/jobs.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id = ... AND job_id = ..."
+    graph_outputs:
+      - entity_id
+      - job_id
+    notes:
+      - "Use for hiring signal and open role detail at known companies."
+  companies.posts:
+    role: "company news/article mentions"
+    grain: "1 row = 1 post/article mention"
+    row_count: 22777314
+    row_identity: post_id
+    order_by: "entity_id, post_id"
+    schema_file: companies/posts.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id = ... AND post_id = ..."
+    graph_outputs:
+      - entity_id
+      - publisher_domain
+    notes:
+      - "Use for articles/news mentions, not social posts."
+  companies.competitors:
+    role: "company competitor-domain edges"
+    grain: "1 row = 1 company-competitor domain edge"
+    row_count: 59360439
+    row_identity: "entity_id, competitor_domain"
+    order_by: "entity_id, competitor_domain"
+    schema_file: companies/competitors.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id = ... AND competitor_domain = ..."
+    graph_outputs:
+      - entity_id
+      - competitor_domain
+    notes:
+      - "Use for competitor discovery from a known company."
+      - "competitor_domain can be resolved through web.domain_entity_bridge."
+  companies.funding_rounds:
+    role: "company funding rounds"
+    grain: "1 row = 1 funding round"
+    row_count: 616867
+    row_identity: funding_round_id
+    order_by: "entity_id, funding_round_id"
+    schema_file: companies/funding_rounds.yaml
+    fast_entrypoints:
+      - "entity_id = ..."
+      - "entity_id = ... AND funding_round_id = ..."
+    graph_outputs:
+      - entity_id
+      - funding_round_id
+    notes:
+      - "Use for funding history at known companies."
+  companies.web_outlinks:
+    role: "page-level external outlinks from resolved company websites"
+    grain: "1 row = 1 external outlink item from a company page"
+    row_count: 1493617219
+    row_identity: "source_entity_id, target_domain, outlink_hash"
+    order_by: "source_entity_id, target_domain, outlink_hash"
+    schema_file: companies/web_outlinks.yaml
+    fast_entrypoints:
+      - "source_entity_id = ..."
+      - "source_entity_id = ... AND target_domain = ..."
+    graph_outputs:
+      - source_entity_id
+      - source_domain
+      - target_domain
+      - target_entity_id
+    notes:
+      - "Use for outbound-web evidence from a known source company."
+      - "target_entity_id is filled only when target_domain resolves uniquely."
+      - "target_entity_id-only lookup is not the ORDER BY prefix."
+
+  web.domain_entity_bridge:
+    role: "domain to company/entity resolution bridge"
+    grain: "1 row = 1 normalized domain"
+    row_count: 16518567
+    row_identity: domain
+    order_by: domain
+    schema_file: web/domain_entity_bridge.yaml
+    fast_entrypoints:
+      - "domain = ..."
+      - "domain IN (...)"
+    graph_outputs:
+      - domain
+      - entity_id
+    notes:
+      - "Use to convert domain -> entity_id when resolution is unique."
+      - "entity_id is blank for ambiguous or unresolved domains."
+  web.pages:
+    role: "crawled web pages and extracted metadata"
+    grain: "1 row = 1 page URL"
+    row_count: 1322459371
+    row_identity: url
+    order_by: domain
+    schema_file: web/pages.yaml
+    fast_entrypoints:
+      - "domain = ..."
+      - "domain IN (...)"
+    graph_outputs:
+      - domain
+      - entity_id
+      - url
+    notes:
+      - "Always enter by domain or a small domain IN list."
+      - "Avoid broad lower(text) LIKE scans; they will timeout."
+      - "entity_id is graph-useful but not the ORDER BY prefix."
+
+edges:
+  - id: person_to_contacts
+    from: people.nucleus.person_id
+    to: people.contacts.person_id
+    key: person_id
+    cardinality: "1:0..1"
+    direction: bidirectional
+    access: "fast both ways; both tables ORDER BY person_id"
+    notes:
+      - "Use to add contact/social fields to known people."
+  - id: person_to_roles
+    from: people.nucleus.person_id
+    to: people.roles_history.person_id
+    key: person_id
+    cardinality: "1:many"
+    direction: bidirectional
+    access: "fast both ways when predicate is person_id; roles_history ORDER BY starts with person_id"
+    notes:
+      - "Use to fetch career history for known people."
+  - id: person_to_education
+    from: people.nucleus.person_id
+    to: people.education.person_id
+    key: person_id
+    cardinality: "1:many"
+    direction: bidirectional
+    access: "fast both ways when predicate is person_id; education ORDER BY starts with person_id"
+    notes:
+      - "Use to fetch education for known people."
+  - id: person_to_repos
+    from: people.nucleus.person_id
+    to: people.repos.person_id
+    key: person_id
+    cardinality: "1:many, sparse"
+    direction: bidirectional
+    access: "graph-valid but not fast by sort key on people.repos; people.repos ORDER BY owner, repo"
+    notes:
+      - "Use only after accepting that person_id lookup in repos may scan more than owner/repo lookup."
+  - id: person_current_company
+    from: people.nucleus.current_company_id
+    to: companies.nucleus.entity_id
+    key: entity_id
+    cardinality: "many people to 0..1 company"
+    direction: people_to_company_preferred
+    access: "company lookup by entity_id is fast; reverse company->people.nucleus is graph-valid but not ORDER BY-prefix fast"
+    notes:
+      - "Current snapshot employment edge."
+  - id: role_company
+    from: people.roles_history.speaker_company_id
+    to: companies.nucleus.entity_id
+    key: entity_id
+    cardinality: "many roles to 0..1 company"
+    direction: role_to_company_preferred
+    access: "company lookup by entity_id is fast; reverse company->roles_history is graph-valid but not ORDER BY-prefix fast"
+    notes:
+      - "Historical/current role-company edge."
+      - "Use people.roles_history.current_status to distinguish current/past/unknown."
+
+  - id: company_to_identifiers
+    from: companies.nucleus.entity_id
+    to: companies.identifiers.entity_id
+    key: entity_id
+    cardinality: "1:0..1"
+    direction: bidirectional
+    access: "fast both ways; both tables ORDER BY entity_id"
+  - id: company_to_metrics
+    from: companies.nucleus.entity_id
+    to: companies.metrics.entity_id
+    key: entity_id
+    cardinality: "1:0..1"
+    direction: bidirectional
+    access: "fast both ways; both tables ORDER BY entity_id"
+  - id: company_to_industry_keywords
+    from: companies.nucleus.entity_id
+    to: companies.industry_keywords.entity_id
+    key: entity_id
+    cardinality: "1:0..1"
+    direction: bidirectional
+    access: "fast both ways; sidecar ORDER BY entity_id"
+  - id: company_to_jobs
+    from: companies.nucleus.entity_id
+    to: companies.jobs.entity_id
+    key: entity_id
+    cardinality: "1:many"
+    direction: bidirectional
+    access: "fast from entity_id; jobs ORDER BY starts with entity_id"
+  - id: company_to_posts
+    from: companies.nucleus.entity_id
+    to: companies.posts.entity_id
+    key: entity_id
+    cardinality: "1:many"
+    direction: bidirectional
+    access: "fast from entity_id; posts ORDER BY starts with entity_id"
+  - id: company_to_competitors
+    from: companies.nucleus.entity_id
+    to: companies.competitors.entity_id
+    key: entity_id
+    cardinality: "1:many"
+    direction: bidirectional
+    access: "fast from entity_id; competitors ORDER BY starts with entity_id"
+  - id: company_to_funding_rounds
+    from: companies.nucleus.entity_id
+    to: companies.funding_rounds.entity_id
+    key: entity_id
+    cardinality: "1:many"
+    direction: bidirectional
+    access: "fast from entity_id; funding_rounds ORDER BY starts with entity_id"
+  - id: company_to_web_outlinks_source
+    from: companies.nucleus.entity_id
+    to: companies.web_outlinks.source_entity_id
+    key: entity_id
+    cardinality: "1:many"
+    direction: company_to_outlinks_preferred
+    access: "fast from source_entity_id; web_outlinks ORDER BY starts with source_entity_id"
+    notes:
+      - "Use to inspect external links on known company pages."
+  - id: web_outlinks_target_company
+    from: companies.web_outlinks.target_entity_id
+    to: companies.nucleus.entity_id
+    key: entity_id
+    cardinality: "many outlinks to 0..1 target company"
+    direction: outlink_to_company_preferred
+    access: "target company lookup by entity_id is fast; target_entity_id-only lookup in web_outlinks is not ORDER BY-prefix fast"
+    notes:
+      - "target_entity_id exists only for uniquely resolved target domains."
+
+  - id: company_website_to_domain_bridge
+    from: companies.nucleus.website
+    to: web.domain_entity_bridge.domain
+    key: domain
+    cardinality: "many companies/domains depending on ambiguity policy"
+    direction: domain_to_entity_preferred
+    access: "domain bridge lookup by domain is fast; companies.nucleus lookup by website is not ORDER BY-prefix fast"
+    notes:
+      - "Use domain bridge to resolve a domain to entity_id, then use entity_id for company sidecars."
+  - id: identifiers_website_to_domain_bridge
+    from: companies.identifiers.website_domain
+    to: web.domain_entity_bridge.domain
+    key: domain
+    cardinality: "many companies/domains depending on ambiguity policy"
+    direction: domain_to_entity_preferred
+    access: "domain bridge lookup by domain is fast; identifiers lookup by website_domain is not ORDER BY-prefix fast"
+  - id: domain_bridge_to_company
+    from: web.domain_entity_bridge.entity_id
+    to: companies.nucleus.entity_id
+    key: entity_id
+    cardinality: "domain to 0..1 resolved company"
+    direction: domain_to_company_preferred
+    access: "bridge lookup by domain is fast; then company lookup by entity_id is fast"
+    notes:
+      - "If entity_id is blank, domain was unresolved or ambiguous."
+  - id: domain_to_pages
+    from: web.domain_entity_bridge.domain
+    to: web.pages.domain
+    key: domain
+    cardinality: "1 domain to many pages"
+    direction: bidirectional
+    access: "fast by domain; web.pages ORDER BY domain"
+  - id: company_website_to_pages
+    from: companies.nucleus.website
+    to: web.pages.domain
+    key: domain
+    cardinality: "1 company/domain to many pages"
+    direction: company_to_pages_preferred
+    access: "web.pages lookup by domain is fast; companies.nucleus lookup by website is not ORDER BY-prefix fast"
+    notes:
+      - "Use company website/domain to enter web.pages. Do not scan web.pages text without domain."
+  - id: web_pages_resolved_company
+    from: web.pages.entity_id
+    to: companies.nucleus.entity_id
+    key: entity_id
+    cardinality: "many pages to 0..1 company"
+    direction: page_to_company_preferred
+    access: "company lookup by entity_id is fast; web.pages entity_id-only lookup is not ORDER BY-prefix fast"
+    notes:
+      - "Prefer domain -> pages and domain -> bridge rather than entity_id -> pages."
+
+  - id: competitor_domain_to_bridge
+    from: companies.competitors.competitor_domain
+    to: web.domain_entity_bridge.domain
+    key: domain
+    cardinality: "competitor domain to 0..1 resolved company"
+    direction: competitor_domain_to_entity_preferred
+    access: "bridge lookup by domain is fast; competitor_domain-only lookup in companies.competitors is not ORDER BY-prefix fast"
+  - id: competitor_domain_to_pages
+    from: companies.competitors.competitor_domain
+    to: web.pages.domain
+    key: domain
+    cardinality: "competitor domain to many pages"
+    direction: competitor_domain_to_pages_preferred
+    access: "web.pages lookup by domain is fast"
+  - id: post_publisher_to_pages
+    from: companies.posts.publisher_domain
+    to: web.pages.domain
+    key: domain
+    cardinality: "publisher domain to many pages"
+    direction: publisher_domain_to_pages_preferred
+    access: "web.pages lookup by domain is fast; posts publisher_domain-only lookup is not ORDER BY-prefix fast"
+  - id: web_outlink_target_domain_to_bridge
+    from: companies.web_outlinks.target_domain
+    to: web.domain_entity_bridge.domain
+    key: domain
+    cardinality: "target domain to 0..1 resolved company"
+    direction: target_domain_to_entity_preferred
+    access: "bridge lookup by domain is fast; target_domain-only lookup in web_outlinks is not ORDER BY-prefix fast unless source_entity_id is also present"
+
+business_model:
+  nuclei:
+    people.nucleus: "Source of truth for professional people. Current snapshot and the central person node."
+    companies.nucleus: "Source of truth for professional companies/entities. Central company node."
+  sidecars: "Flat enrichment tables keyed by person_id, entity_id, or domain. Use them after finding a nucleus id."
+  edges: "Tables that represent relationships: roles_history, competitors, web_outlinks, domain_entity_bridge, pages."
+  promoted_fields: "Nucleus tables contain common high-value fields for quick orientation, but deeper/source-specific signals live in sidecars."
+
+table_use:
+  companies.nucleus:
+    use_for:
+      - "canonical company profile"
+      - "name/website/summary/headcount/location/reputation-style ranking"
+      - "starting point once entity_id is known"
+    go_deeper_with:
+      identifiers: companies.identifiers
+      quant_metrics: companies.metrics
+      taxonomy: companies.industry_keywords
+      hiring: companies.jobs
+      articles: companies.posts
+      competitors: companies.competitors
+      funding: companies.funding_rounds
+      web_network: companies.web_outlinks
+  companies.identifiers:
+    use_for:
+      - "company identity resolution from public identifiers"
+      - "web/social/profile/marketplace URLs and handles"
+      - "mapping known public profile data back to entity_id"
+    note: "For pure domain -> entity_id, web.domain_entity_bridge is the fast dedicated resolver."
+  companies.metrics:
+    use_for:
+      - "quantifiable business signals"
+      - "headcount, growth, traffic, SEO, hiring, reviews, ProductHunt/G2/Gartner, funding/M&A counts"
+      - "ranking/scoring known companies after entity_id filtering"
+  companies.industry_keywords:
+    use_for:
+      - "rich industry/taxonomy/facet evidence"
+      - "deeper categories than companies.nucleus.keywords"
+      - "industry/category research and enrichment"
+  companies.jobs:
+    use_for:
+      - "one row per job posting"
+      - "hiring focus, current initiatives, teams being built, strategic direction"
+  companies.posts:
+    use_for:
+      - "news/article mentions, not social posts"
+      - "external narrative/signals around a company"
+      - "what companies are being talked about"
+  companies.competitors:
+    use_for:
+      - "preprocessed competitor-domain edges"
+      - "market maps and alternative-company discovery"
+      - "SEO/competitive-source competitor signals"
+  companies.funding_rounds:
+    use_for:
+      - "one row per funding round"
+      - "latest round, funding history, investor display strings, amount/date signals"
+  companies.web_outlinks:
+    use_for:
+      - "page-level external outlink graph from company websites"
+      - "ecosystems, partner/vendor/customer/content networks"
+      - "starting points for further web research"
+    note: "Fast from source_entity_id; target-only lookup is not ORDER BY-prefix fast."
+  web.domain_entity_bridge:
+    use_for:
+      - "fast domain -> entity_id resolution"
+      - "entering the company graph from a website/domain"
+    note: "Blank entity_id means unresolved or ambiguous domain."
+  web.pages:
+    use_for:
+      - "deep page evidence not already preprocessed"
+      - "headings, metadata, page text, emails, phones, socials, tools, outlinks"
+      - "website-level research after narrowing to known domains"
+    note: "Always enter by domain or small domain IN list."
+  people.nucleus:
+    use_for:
+      - "canonical person profile/current snapshot"
+      - "name/location/professional title/seniority/current company/skills-signals"
+      - "starting point once person_id is known"
+  people.contacts:
+    use_for:
+      - "person identity/contact sidecar"
+      - "LinkedIn slug, social handles, GitHub, websites, emails where available"
+  people.roles_history:
+    use_for:
+      - "one row per career position"
+      - "career paths, previous employers, current/past roles"
+      - "movement patterns such as ex-finance people now in tech"
+    note: "Prefer starting from person_id; company-only role scans are graph-valid but not ORDER BY-prefix fast today."
+  people.education:
+    use_for:
+      - "one row per education record/degree"
+      - "schools, degrees, fields of study after person_id"
+  people.repos:
+    use_for:
+      - "GitHub repositories"
+      - "what a developer has published"
+      - "entering from GitHub owner/repo"
+    note: "person_id linkage is sparse; physical access is owner, repo."
+
+entry_patterns:
+  known_person_id:
+    start: people.nucleus
+    then:
+      - people.contacts
+      - people.roles_history
+      - people.education
+      - people.repos
+    note: "Best path for person deep-dives."
+  known_company_entity_id:
+    start: companies.nucleus
+    then:
+      - companies.identifiers
+      - companies.metrics
+      - companies.industry_keywords
+      - companies.jobs
+      - companies.posts
+      - companies.competitors
+      - companies.funding_rounds
+      - companies.web_outlinks
+    note: "Best path for company deep-dives."
+  known_company_identifier:
+    start:
+      - web.domain_entity_bridge
+      - companies.identifiers
+    then:
+      - companies.nucleus
+      - company_sidecars
+    note: "If starting from a domain, use web.domain_entity_bridge. If starting from social/profile/marketplace URL or handle, use companies.identifiers."
+  known_domain:
+    start: web.domain_entity_bridge
+    then:
+      - companies.nucleus
+      - companies.identifiers
+      - web.pages
+    note: "Resolve domain to entity_id when possible; use domain directly for web.pages."
+  company_to_people:
+    start: companies.nucleus
+    graph_hops:
+      - people.nucleus.current_company_id
+      - people.roles_history.speaker_company_id
+    caution: "Graph-correct but not ORDER BY-prefix fast on the people tables today. Prefer narrow company/person ID workflows or dedicated serving indexes if available."
+  web_evidence:
+    start: web.pages
+    required_filter: "domain = ... or domain IN (...)"
+    caution: "Do not broad-scan text. Use domains from companies.nucleus.website, companies.identifiers.website_domain, web.domain_entity_bridge.domain, competitors, or outlinks."
+
+anti_patterns:
+  - pattern: "web.pages WHERE lower(text) LIKE ... without domain"
+    why: "Full text scan over 1B+ rows; will timeout or burn IO."
+  - pattern: "people.nucleus WHERE current_company_id = ... as first step"
+    why: "Graph-valid but not ORDER BY-prefix fast; table is ordered by person_id."
+  - pattern: "people.roles_history WHERE speaker_company_id = ... as first step"
+    why: "Graph-valid but not ORDER BY-prefix fast; table is ordered by person_id first."
+  - pattern: "large joins before narrowing IDs"
+    why: "Prefer ID hops: collect entity_id/person_id/domain first, then query sidecars."
+
+query_safety:
+  - "Use exact person_id/entity_id/domain filters before selecting large text columns."
+  - "Use table-specific schema files for column fill rates and exact ClickHouse access notes."
+  - "Prefer two-step ID hops over broad joins."
+  - "The graph edge tells you what keys are compatible; clickhouse_access tells you whether the lookup is physically fast."

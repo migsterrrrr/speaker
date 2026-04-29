@@ -1,0 +1,132 @@
+table: companies.web_outlinks
+purpose: "external outlinks found on resolved company web pages"
+grain: "1 row = 1 external outlink item from a company page"
+estimated_rows: "1.49 billion"
+row_count: 1493617219
+row_identity: "source_entity_id, target_domain, outlink_hash"
+graph_keys:
+  source_entity_id: "Speaker company/entity id for the source company."
+  target_entity_id: "Speaker company/entity id for the target company when resolved."
+  target_domain: "Target/root domain."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "source_entity_id, target_domain, outlink_hash"
+  primary_key: "source_entity_id, target_domain, outlink_hash"
+  partition_by: null
+  fast_where:
+    - where: "source_entity_id = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "source_entity_id = ... AND target_domain = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "target_domain = ... without source_entity_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+    - where: "target_entity_id = ... without source_entity_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
+  source_entity_id:
+    - companies.nucleus.entity_id
+  target_entity_id:
+    - companies.nucleus.entity_id
+  target_domain:
+    - web.domain_entity_bridge.domain
+    - web.pages.domain
+query_notes:
+  - "Start with a known source_entity_id."
+  - "target_entity_id is filled only when target_domain resolves uniquely."
+columns:
+  - name: source_entity_id
+    type: "String"
+    note: "Speaker company/entity id for the source company."
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: source_domain
+    type: "String"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: source_page_url
+    type: "String"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: source_page_type
+    type: "LowCardinality(String)"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: target_url
+    type: "String"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: target_domain
+    type: "String"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: target_entity_id
+    type: "String"
+    note: "Speaker company/entity id for the target company when resolved."
+    fill:
+      rows: 333184773
+      pct: 22.3072
+      missing_rows: 1160432446
+      definition: "non-empty string"
+      stats: "exact"
+  - name: target_resolution_status
+    type: "LowCardinality(String)"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: target_entity_count
+    type: "UInt32"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 886569239
+      nonzero_pct: 59.3572
+  - name: outlink_hash
+    type: "UInt64"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 1493617219
+      nonzero_pct: 100.0
+  - name: updated_on
+    type: "Date"
+    fill:
+      rows: 1493617219
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"

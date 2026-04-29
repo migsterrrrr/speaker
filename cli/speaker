@@ -1,11 +1,11 @@
 #!/bin/bash
-# speaker — Professional intelligence mesh. 818M people. 3.7M companies. SQL-native.
-# 10 tables. Enter anywhere. more queries = more signal.
+# speaker — SQL-native professional intelligence for agents.
+# 825M people. 26M companies. 16 public tables. more queries = more signal.
 
 set -e
 
 # --- Config ---
-VERSION="3.0.0"
+VERSION="3.1.0"
 ROOT_URL="${ROOT_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker/master}"
 REPO_URL="${REPO_URL:-$ROOT_URL/cli}"
 SKILL_URL="${SKILL_URL:-$ROOT_URL/SKILL.md}"
@@ -96,17 +96,22 @@ check_auth() {
 
 schema_artifacts() {
     cat << 'EOF'
-_mesh.yaml|tables/_mesh.yaml
-all.yaml|tables/all.yaml
-people.main.yaml|tables/people/main.yaml
-people.career.yaml|tables/people/career.yaml
+_mesh.yaml|mesh.yaml
+people.nucleus.yaml|tables/people/nucleus.yaml
+people.contacts.yaml|tables/people/contacts.yaml
+people.roles_history.yaml|tables/people/roles_history.yaml
 people.education.yaml|tables/people/education.yaml
-people.contact.yaml|tables/people/contact.yaml
 people.repos.yaml|tables/people/repos.yaml
-companies.main.yaml|tables/companies/main.yaml
+companies.nucleus.yaml|tables/companies/nucleus.yaml
+companies.identifiers.yaml|tables/companies/identifiers.yaml
+companies.metrics.yaml|tables/companies/metrics.yaml
+companies.industry_keywords.yaml|tables/companies/industry_keywords.yaml
 companies.jobs.yaml|tables/companies/jobs.yaml
-companies.news.yaml|tables/companies/news.yaml
-web.links.yaml|tables/web/links.yaml
+companies.posts.yaml|tables/companies/posts.yaml
+companies.competitors.yaml|tables/companies/competitors.yaml
+companies.funding_rounds.yaml|tables/companies/funding_rounds.yaml
+companies.web_outlinks.yaml|tables/companies/web_outlinks.yaml
+web.domain_entity_bridge.yaml|tables/web/domain_entity_bridge.yaml
 web.pages.yaml|tables/web/pages.yaml
 EOF
 }
@@ -114,6 +119,7 @@ EOF
 sync_schema_docs() {
     local src dst
     mkdir -p "$SCHEMA_DIR"
+    rm -f "$SCHEMA_DIR"/*.yaml
     while IFS='|' read -r dst src; do
         [[ -z "$dst" ]] && continue
         if ! curl --fail --show-error --silent --location "$ROOT_URL/$src" -o "$SCHEMA_DIR/$dst"; then
@@ -125,7 +131,7 @@ sync_schema_docs() {
 schema_path_for() {
     local table="$1"
     case "$table" in
-        people.main|people.career|people.education|people.contact|people.repos|companies.main|companies.jobs|companies.news|web.links|web.pages)
+        people.nucleus|people.contacts|people.roles_history|people.education|people.repos|companies.nucleus|companies.identifiers|companies.metrics|companies.industry_keywords|companies.jobs|companies.posts|companies.competitors|companies.funding_rounds|companies.web_outlinks|web.domain_entity_bridge|web.pages)
             echo "$SCHEMA_DIR/$table.yaml"
             ;;
         *)
@@ -192,7 +198,7 @@ cmd_signup() {
     │   ╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝      │
     │                                                  speaker.sh     │
     │                                                                 │
-    │   818M people. 3.7M companies. 10 tables. The mesh.             │
+    │   825M people. 26M companies. 16 public tables.                 │
     │                                                                 │
     │   Your agent should read: ~/.speaker/SKILL.md                   │
     │   Quick start: speaker help                                     │
@@ -344,12 +350,11 @@ cmd_count() {
     local key resp count
     key=$(get_key)
 
-    # Prefer the precise query if we're logged in, but fall back to /health
-    # so `speaker count` works before signup/login too.
+    # Prefer the precise query if we're logged in.
     if [[ -n "$key" ]]; then
         if resp=$(curl --fail --show-error --silent "$API_URL/query" \
             -H "X-API-Key: $key" \
-            -d "SELECT formatReadableQuantity(count()) as people FROM people.main" 2>/dev/null); then
+            -d "SELECT formatReadableQuantity(count()) as people FROM people.nucleus" 2>/dev/null); then
             count=$(echo "$resp" | grep -o '"people":"[^"]*"' | cut -d'"' -f4)
             if [[ -n "$count" ]]; then
                 echo "$count"
@@ -358,31 +363,49 @@ cmd_count() {
         fi
     fi
 
-    if ! resp=$(curl --fail --show-error --silent "$API_URL/health" 2>&1); then
-        echo "Error: could not get count: $resp" >&2
-        exit 1
-    fi
-
-    count=$(echo "$resp" | grep -o '"people":"[^"]*"' | cut -d'"' -f4)
-    echo "${count:-Error: could not get count}"
+    # Works before signup/login and avoids relying on a stale health endpoint.
+    echo "825M+"
 }
 
 cmd_schema() {
     local arg="$1"
-    local path
+    local path dst src first=1
 
     ensure_schema_docs
 
     if [[ -z "$arg" ]]; then
         path="$SCHEMA_DIR/_mesh.yaml"
-    elif [[ "$arg" == "--all" ]]; then
-        path="$SCHEMA_DIR/all.yaml"
-    else
-        if ! path=$(schema_path_for "$arg"); then
-            echo "Error: unknown table '$arg'" >&2
-            echo "Run 'speaker schema' to see available tables." >&2
+        if [[ ! -f "$path" ]]; then
+            echo "Error: local schema file missing: $path" >&2
+            echo "Run 'speaker update'." >&2
             exit 1
         fi
+        cat "$path"
+        return
+    fi
+
+    if [[ "$arg" == "--all" ]]; then
+        while IFS='|' read -r dst src; do
+            [[ -z "$dst" ]] && continue
+            path="$SCHEMA_DIR/$dst"
+            if [[ ! -f "$path" ]]; then
+                echo "Error: local schema file missing: $path" >&2
+                echo "Run 'speaker update'." >&2
+                exit 1
+            fi
+            if [[ "$first" -eq 0 ]]; then
+                printf '\n---\n'
+            fi
+            cat "$path"
+            first=0
+        done < <(schema_artifacts)
+        return
+    fi
+
+    if ! path=$(schema_path_for "$arg"); then
+        echo "Error: unknown table '$arg'" >&2
+        echo "Run 'speaker schema' to see available tables." >&2
+        exit 1
     fi
 
     if [[ ! -f "$path" ]]; then
@@ -397,32 +420,35 @@ cmd_schema() {
 cmd_mesh() {
     cat << 'MESH'
 
-    THE MESH
+    PROFESSIONAL GRAPH
 
-         ⚡  📡  🎓  📋
-          ╲  │  │  ╱
-           ◉ people ◉
-               ║
-            🕸️─╬─📄
-               ║
-           ◉ companies ◉
-          ╱  │  ╲
-        📰  💼  📋
+    people.nucleus              825M    source of truth for professional people
+      ├─ people.contacts                contact/social sidecar
+      ├─ people.roles_history    989M    career history; one row per role
+      ├─ people.education        333M    education records
+      └─ people.repos             40M    GitHub repositories
 
-    👤 people.main          818M    Identity, role, skills, education, scores
-    📋 people.career        974M    Full role history
-    🎓 people.education     333M    Schools, degrees, fields of study
-    📡 people.contact       863M    LinkedIn, email, Twitter, GitHub, website
-    ⚡ people.repos          40M    GitHub repositories
+              person_id │ current_company_id / speaker_company_id
+                        ▼
 
-    🏢 companies.main       3.7M    AI-synthesized company profiles
-    💼 companies.jobs        755K    Active job postings
-    📰 companies.news         19M    News articles
+    companies.nucleus            26M     source of truth for companies/entities
+      ├─ companies.identifiers           websites, profiles, public identifiers
+      ├─ companies.metrics               headcount, traffic, SEO, funding signals
+      ├─ companies.industry_keywords     taxonomy and facet signals
+      ├─ companies.jobs                  job postings and hiring signal
+      ├─ companies.posts          22M    news/article mentions
+      ├─ companies.competitors    59M    competitor-domain edges
+      ├─ companies.funding_rounds        funding rounds
+      └─ companies.web_outlinks  1.49B   page-level external links
 
-    🕸️ web.links              56M    Domain-to-domain link graph
-    📄 web.pages             1.3B    Company web pages (filter by domain)
+              entity_id │ domain
+                        ▼
 
-    Use 'speaker schema <database.table>' for curated YAML and hop keys.
+    web.domain_entity_bridge     16M     domain → entity_id resolver
+    web.pages                   1.3B     page evidence; enter by domain
+
+    Rule: hops, not broad joins. Carry person_id, entity_id, or domain.
+    Use 'speaker schema <database.table>' for curated YAML and access notes.
     Use 'speaker query "DESCRIBE database.table"' for raw metadata.
 
     more queries = more signal
@@ -432,7 +458,8 @@ MESH
 
 cmd_help() {
     cat << 'EOF'
-speaker — 818M people. 3.7M companies. 10 tables. The mesh.
+speaker — SQL-native professional intelligence for agents.
+825M people. 26M companies. 16 public tables.
 
 COMMANDS:
   speaker signup                  Sign up with invite code
@@ -441,25 +468,28 @@ COMMANDS:
   speaker status                  Check account status by email
   speaker query "SQL"             Run a SQL query
   speaker count                   Total people
-  speaker schema                  Print mesh schema YAML
-  speaker schema people.main      Print one table schema YAML
-  speaker schema --all            Print bundled schema YAML
-  speaker mesh                    Show the mesh overview
+  speaker schema                  Print graph schema YAML
+  speaker schema companies.nucleus
+  speaker schema people.nucleus
+  speaker schema --all            Print all bundled schema YAML
+  speaker mesh                    Show the graph overview
   speaker logout                  Remove credentials
   speaker update                  Update to latest version
 
 TABLES:
-  people.main         818M     people.career       974M
-  people.education    333M     people.contact      863M
-  people.repos         40M
+  people.nucleus       people.contacts        people.roles_history
+  people.education     people.repos
 
-  companies.main      3.7M    companies.jobs      755K
-  companies.news       19M
+  companies.nucleus    companies.identifiers  companies.metrics
+  companies.industry_keywords                 companies.jobs
+  companies.posts      companies.competitors  companies.funding_rounds
+  companies.web_outlinks
 
-  web.links            56M    web.pages           1.3B
+  web.domain_entity_bridge                    web.pages
 
 LIMITS:
-  Max 100,000 rows per query. No daily limit.
+  Max 100,000 rows returned per query. Server-side timeout is about 50s.
+  Start from keys when possible: person_id, entity_id, domain.
 
 Your agent should read: ~/.speaker/SKILL.md
 EOF

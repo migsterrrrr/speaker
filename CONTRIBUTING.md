@@ -1,41 +1,42 @@
-# Contributing a Table
+# Contributing to Speaker
 
-The mesh grows through contributions. Add a table, connect it, everyone benefits.
+Speaker is an open-source CLI and schema layer for a hosted professional graph.
 
-## How
+The mesh grows when people add useful schemas, safe query recipes, agent workflows, and public datasets that connect to the graph.
 
-1. Fork this repo
-2. Copy `contrib/_template/` to `contrib/your-table/`
-3. Fill in `main.yaml` — your schema
-4. Add `pipeline.py` (or `.sh`) — builds from a public data source
-5. PR
+## Good contributions
 
-## Rules
+- schema fixes and clearer column descriptions
+- safe query examples and agent workflows
+- integrations for Claude, Codex, Pi, MCP, or other harnesses
+- public datasets that connect through `person_id`, `entity_id`, or `domain`
+- docs that make ClickHouse access patterns clearer
 
-- **Must connect.** At least one column must link to `people.main.speaker_person_id` or `companies.main.entity_id`. Without a connection, it's a standalone dataset, not a mesh node.
-- **Public data source.** The pipeline must build from data anyone can access.
-- **Reproducible.** Someone else can run your pipeline and get the same result.
-- **English canonical names.** Column descriptions and values in English where possible.
+## Contributing a table
 
-## What happens after merge
+1. Fork the repo.
+2. Copy `contrib/_template/` to `contrib/your-table/`.
+3. Fill in `main.yaml`.
+4. Add a reproducible pipeline if the table is meant to be built from public data.
+5. Open a PR.
 
-- Your pipeline runs on the central ClickHouse
-- The table appears in the mesh
-- Every agent sees it immediately
-- Parquet export published to HuggingFace
-- You're listed as maintainer
+## Table rules
 
-## What makes a good contribution
+- **Must connect.** At least one column should connect to `people.nucleus.person_id`, `companies.nucleus.entity_id`, or `web.domain_entity_bridge.domain`.
+- **Public source.** Contributed data pipelines should build from data others can access.
+- **Reproducible.** Another contributor should be able to run the pipeline and understand the result.
+- **Agent-readable.** Prefer clear names, simple types, and explicit graph keys.
+- **Safe.** Do not include secrets, private/provenance-only fields, or data that cannot be redistributed.
 
-Tables that create new connections in the mesh:
+## Table ideas
 
 | Table idea | Connects via | Source |
 |---|---|---|
-| Conference speakers | person_id | Public conference sites |
-| Patents | person_id + entity_id | USPTO / EPO |
-| Funding rounds | entity_id | Public filings |
-| Research papers | person_id | Semantic Scholar / arXiv |
-| Regulatory filings | entity_id | Public registries |
-| Podcast appearances | person_id | Public RSS feeds |
+| Conference speakers | `person_id`, `domain` | Public conference sites |
+| Patents | `person_id`, `entity_id` | USPTO / EPO |
+| Research papers | `person_id`, `domain` | Semantic Scholar / arXiv |
+| Regulatory filings | `entity_id`, `domain` | Public registries |
+| Podcast appearances | `person_id`, `domain` | Public RSS feeds |
+| Open-source projects | `person_id`, `domain` | Public code hosts |
 
-The best tables are ones YOU need. Build it for yourself. The mesh makes it valuable for everyone.
+The best tables are ones you need. Build it for yourself; the mesh makes it useful for everyone.

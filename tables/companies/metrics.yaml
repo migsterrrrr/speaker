@@ -1,0 +1,730 @@
+table: companies.metrics
+purpose: "company numeric metrics and growth signals"
+grain: "1 row = 1 company/entity"
+estimated_rows: "26.32 million"
+row_count: 26323167
+row_identity: "entity_id"
+graph_keys:
+  entity_id: "Speaker company/entity id."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "entity_id"
+  primary_key: "entity_id"
+  partition_by: null
+  fast_where:
+    - where: "entity_id = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "entity_id IN (...)"
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "metric thresholds without entity_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
+  entity_id:
+    - companies.nucleus.entity_id
+    - companies.identifiers.entity_id
+    - companies.jobs.entity_id
+query_notes:
+  - "Use entity_id to enrich known companies."
+  - "Metric fields are sparse; null/zero can mean missing depending on field."
+columns:
+  - name: entity_id
+    type: "String"
+    note: "Speaker company/entity id; carry across companies.* and web entity tables."
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: li_employee_count_range
+    type: "LowCardinality(String)"
+    fill:
+      rows: 18839757
+      pct: 71.571
+      missing_rows: 7483410
+      definition: "non-empty string"
+      stats: "exact"
+  - name: li_headcount
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 22853559
+      pct: 86.8192
+      missing_rows: 3469608
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_followers
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 22490118
+      pct: 85.4385
+      missing_rows: 3833049
+      definition: "non-null value"
+      stats: "exact"
+  - name: estimated_revenue_lower_bound_usd
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 17460091
+      pct: 66.3298
+      missing_rows: 8863076
+      definition: "non-null value"
+      stats: "exact"
+  - name: estimated_revenue_higher_bound_usd
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 17460091
+      pct: 66.3298
+      missing_rows: 8863076
+      definition: "non-null value"
+      stats: "exact"
+  - name: monthly_visitors
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_pct_mom
+    type: "Nullable(Float64)"
+    fill:
+      rows: 22754311
+      pct: 86.4421
+      missing_rows: 3568856
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_pct_qoq
+    type: "Nullable(Float64)"
+    fill:
+      rows: 22655859
+      pct: 86.0681
+      missing_rows: 3667308
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_pct_six_months
+    type: "Nullable(Float64)"
+    fill:
+      rows: 22483238
+      pct: 85.4124
+      missing_rows: 3839929
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_pct_yoy
+    type: "Nullable(Float64)"
+    fill:
+      rows: 22004020
+      pct: 83.5918
+      missing_rows: 4319147
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_pct_two_years
+    type: "Nullable(Float64)"
+    fill:
+      rows: 20648270
+      pct: 78.4414
+      missing_rows: 5674897
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_abs_mom
+    type: "Nullable(Int64)"
+    fill:
+      rows: 22754311
+      pct: 86.4421
+      missing_rows: 3568856
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_abs_qoq
+    type: "Nullable(Int64)"
+    fill:
+      rows: 22655859
+      pct: 86.0681
+      missing_rows: 3667308
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_abs_six_months
+    type: "Nullable(Int64)"
+    fill:
+      rows: 22483238
+      pct: 85.4124
+      missing_rows: 3839929
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_abs_yoy
+    type: "Nullable(Int64)"
+    fill:
+      rows: 22004020
+      pct: 83.5918
+      missing_rows: 4319147
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_headcount_growth_abs_two_years
+    type: "Nullable(Int64)"
+    fill:
+      rows: 20648270
+      pct: 78.4414
+      missing_rows: 5674897
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_followers_growth_pct_mom
+    type: "Nullable(Float64)"
+    fill:
+      rows: 14679135
+      pct: 55.7651
+      missing_rows: 11644032
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_followers_growth_pct_qoq
+    type: "Nullable(Float64)"
+    fill:
+      rows: 11952276
+      pct: 45.4059
+      missing_rows: 14370891
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_followers_growth_pct_six_months
+    type: "Nullable(Float64)"
+    fill:
+      rows: 8871964
+      pct: 33.704
+      missing_rows: 17451203
+      definition: "non-null value"
+      stats: "exact"
+  - name: li_followers_growth_pct_yoy
+    type: "Nullable(Float64)"
+    fill:
+      rows: 2568017
+      pct: 9.7557
+      missing_rows: 23755150
+      definition: "non-null value"
+      stats: "exact"
+  - name: monthly_visitor_mom_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: monthly_visitor_qoq_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: traffic_source_social_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: traffic_source_search_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: traffic_source_direct_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: traffic_source_paid_referral_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: traffic_source_referral_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 9692773
+      pct: 36.8222
+      missing_rows: 16630394
+      definition: "non-null value"
+      stats: "exact"
+  - name: average_seo_organic_rank
+    type: "Nullable(Float32)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: monthly_paid_clicks
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: monthly_organic_clicks
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: average_ad_rank
+    type: "Nullable(Float32)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: total_organic_results
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: monthly_google_ads_budget
+    type: "Nullable(Float64)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: monthly_organic_value
+    type: "Nullable(Float64)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: total_ads_purchased
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: lost_ranked_seo_keywords
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: gained_ranked_seo_keywords
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: newly_ranked_seo_keywords
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 18535327
+      pct: 70.4145
+      missing_rows: 7787840
+      definition: "non-null value"
+      stats: "exact"
+  - name: job_openings_count
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 148189
+      pct: 0.563
+      missing_rows: 26174978
+      definition: "non-null value"
+      stats: "exact"
+  - name: job_openings_growth_pct_mom
+    type: "Nullable(Float64)"
+    fill:
+      rows: 148189
+      pct: 0.563
+      missing_rows: 26174978
+      definition: "non-null value"
+      stats: "exact"
+  - name: job_openings_growth_pct_qoq
+    type: "Nullable(Float64)"
+    fill:
+      rows: 148189
+      pct: 0.563
+      missing_rows: 26174978
+      definition: "non-null value"
+      stats: "exact"
+  - name: job_openings_growth_pct_yoy
+    type: "Nullable(Float64)"
+    fill:
+      rows: 148189
+      pct: 0.563
+      missing_rows: 26174978
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_overall_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_review_count
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 9118
+      pct: 0.0346
+      missing_rows: 26314049
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_ceo_approval_pct
+    type: "Nullable(Int32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_business_outlook_pct
+    type: "Nullable(Int32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_recommend_to_friend_pct
+    type: "Nullable(Int32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_senior_management_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_compensation_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_career_opportunities_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_culture_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_diversity_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_work_life_balance_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 140808
+      pct: 0.5349
+      missing_rows: 26182359
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_ceo_approval_growth_pct_mom
+    type: "Nullable(Float64)"
+    fill:
+      rows: 28816
+      pct: 0.1095
+      missing_rows: 26294351
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_ceo_approval_growth_pct_qoq
+    type: "Nullable(Float64)"
+    fill:
+      rows: 57272
+      pct: 0.2176
+      missing_rows: 26265895
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_ceo_approval_growth_pct_yoy
+    type: "Nullable(Float64)"
+    fill:
+      rows: 16535
+      pct: 0.0628
+      missing_rows: 26306632
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_review_count_growth_pct_mom
+    type: "Nullable(Float64)"
+    fill:
+      rows: 3323
+      pct: 0.0126
+      missing_rows: 26319844
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_review_count_growth_pct_qoq
+    type: "Nullable(Float64)"
+    fill:
+      rows: 121240
+      pct: 0.4606
+      missing_rows: 26201927
+      definition: "non-null value"
+      stats: "exact"
+  - name: glassdoor_review_count_growth_pct_yoy
+    type: "Nullable(Float64)"
+    fill:
+      rows: 29915
+      pct: 0.1136
+      missing_rows: 26293252
+      definition: "non-null value"
+      stats: "exact"
+  - name: g2_average_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 28382
+      pct: 0.1078
+      missing_rows: 26294785
+      definition: "non-null value"
+      stats: "exact"
+  - name: g2_review_count
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 15751
+      pct: 0.0598
+      missing_rows: 26307416
+      definition: "non-null value"
+      stats: "exact"
+  - name: g2_review_count_mom_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 635
+      pct: 0.0024
+      missing_rows: 26322532
+      definition: "non-null value"
+      stats: "exact"
+  - name: g2_review_count_qoq_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 15431
+      pct: 0.0586
+      missing_rows: 26307736
+      definition: "non-null value"
+      stats: "exact"
+  - name: g2_review_count_yoy_pct
+    type: "Nullable(Float64)"
+    fill:
+      rows: 0
+      pct: 0.0
+      missing_rows: 26323167
+      definition: "non-null value"
+      stats: "exact"
+  - name: producthunt_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 6384
+      pct: 0.0243
+      missing_rows: 26316783
+      definition: "non-null value"
+      stats: "exact"
+  - name: producthunt_num_upvotes
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 6384
+      pct: 0.0243
+      missing_rows: 26316783
+      definition: "non-null value"
+      stats: "exact"
+  - name: producthunt_num_reviews
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 6384
+      pct: 0.0243
+      missing_rows: 26316783
+      definition: "non-null value"
+      stats: "exact"
+  - name: producthunt_num_followers
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 6384
+      pct: 0.0243
+      missing_rows: 26316783
+      definition: "non-null value"
+      stats: "exact"
+  - name: producthunt_launch_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 5887
+      nonzero_pct: 0.0224
+  - name: producthunt_review_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 1342
+      nonzero_pct: 0.0051
+  - name: gartner_review_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 2872
+      nonzero_pct: 0.0109
+  - name: gartner_average_rating
+    type: "Nullable(Float32)"
+    fill:
+      rows: 2872
+      pct: 0.0109
+      missing_rows: 26320295
+      definition: "non-null value"
+      stats: "exact"
+  - name: gartner_product_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 4504
+      nonzero_pct: 0.0171
+  - name: crunchbase_total_investment_usd
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 2976653
+      pct: 11.3081
+      missing_rows: 23346514
+      definition: "non-null value"
+      stats: "exact"
+  - name: days_since_last_fundraise
+    type: "Nullable(UInt32)"
+    fill:
+      rows: 299683
+      pct: 1.1385
+      missing_rows: 26023484
+      definition: "non-null value"
+      stats: "exact"
+  - name: last_funding_round_type
+    type: "LowCardinality(String)"
+    fill:
+      rows: 297516
+      pct: 1.1302
+      missing_rows: 26025651
+      definition: "non-empty string"
+      stats: "exact"
+  - name: last_funding_round_investment_usd
+    type: "Nullable(UInt64)"
+    fill:
+      rows: 214488
+      pct: 0.8148
+      missing_rows: 26108679
+      definition: "non-null value"
+      stats: "exact"
+  - name: funding_round_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 291334
+      nonzero_pct: 1.1068
+  - name: investor_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 239079
+      nonzero_pct: 0.9082
+  - name: acquired_by_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 105151
+      nonzero_pct: 0.3995
+  - name: acquisition_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 47276
+      nonzero_pct: 0.1796
+  - name: metric_source_families
+    type: "Array(String)"
+    fill:
+      rows: 25927088
+      pct: 98.4953
+      missing_rows: 396079
+      definition: "array length > 0"
+      stats: "exact"
+  - name: metric_signal_count
+    type: "UInt32"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 25927088
+      nonzero_pct: 98.4953
+  - name: updated_on
+    type: "Date"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"

@@ -1,69 +1,454 @@
 table: web.pages
-purpose: crawled pages plus extracted metadata
-grain: 1 row = 1 page URL
-keys:
-  likely_unique: url
-  useful:
-    domain: best filter key; filter by domain before reading large text fields
-    url: page URL
-hop_keys:
+purpose: "crawled web pages and extracted metadata"
+grain: "1 row = 1 page URL"
+estimated_rows: "1.32 billion"
+row_count: 1322459371
+row_identity: "url"
+graph_keys:
+  domain: "Normalized domain key."
+  entity_id: "Speaker company/entity id when the page domain resolves uniquely."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "domain"
+  primary_key: "domain"
+  partition_by: null
+  fast_where:
+    - where: "domain = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "domain IN (...)"
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "lower(text) LIKE ... without domain"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+    - where: "entity_id = ... without domain"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
   domain:
-    note: best page-level company hop key; normalize to a bare domain when needed
-    carry_to:
-    - people.main.org_domain
-    - people.career.org_domain
-    - companies.main.website
-    - companies.jobs.domain
-    - companies.news.domain
-    - web.links.source_domain
-    - web.links.target_domain
-query_hints:
-- always filter by domain before selecting desc or text; this table is huge
-- domain and url may be percent-encoded for IDNs
-- several extracted metadata fields are pipe-delimited strings, not arrays
+    - web.domain_entity_bridge.domain
+    - companies.nucleus.website
+    - companies.identifiers.website_domain
+  entity_id:
+    - companies.nucleus.entity_id
+    - companies.metrics.entity_id
+query_notes:
+  - "Always filter by domain or a small domain IN list before reading text."
+  - "Avoid broad lower(text) LIKE scans; they will timeout."
+  - "entity_id is filled only when the page domain resolves uniquely."
 columns:
-  domain: string; domain key
-  url: string; page URL
-  canonical: string?
-  page_type: string?; common values other|content|product|homepage|newsroom|event|identity|careers|legal|docs
-  title: string?
-  lang: string?; usually short code like ru or es
-  lang_score: float?
-  country: string?; usually short country code
-  desc: string?; description text
-  text: string?; full page text; can be very large
-  word_count: int
-  emails: string?; extracted email(s)
-  phones: string?; extracted phone(s)
-  socials: pipe_string?; extracted social URLs
-  outlinks: pipe_string?; outbound URLs
-  headings: pipe_string?; heading list, often level-prefixed like 1:Title|2:Section
-  nav: pipe_string?; navigation labels
-  tools: pipe_string?; detected tech stack/plugins
-  tag_ids: pipe_string?; extracted tag or analytics ids
-  site_name: string?
-  content_type: string?; common values article|website|product|profile; often empty
-  twitter_site: string?
-  twitter_creator: string?
-  og_locale: string?
-  org_type: string?; e.g. Organization
-  org_name: string?
-  org_phone: string?
-  org_email: string?
-  org_socials: pipe_string?; org social URLs
-  address: string?
-  postcode: string?
-  org_country: string?
-  lat: float?
-  lng: float?
-  founded: string?; extracted year/date text, not normalized
-  employees: string?; extracted size text, not normalized
-  rating: float?
-  reviews: int
-  keywords: string?; keyword text, not an array
-  hreflang_count: int
-  crawled_at: string?; crawl timestamp text
-  server: string?
-  powered_by: string?
-  server_ip: string?
-  response_ms: int
+  - name: entity_id
+    type: "String"
+    note: "Speaker company/entity id; carry across companies.* and web entity tables."
+    fill:
+      rows: 335906863
+      pct: 25.4002
+      missing_rows: 986552508
+      definition: "non-empty entity_id from domain bridge default"
+      stats: "exact"
+      source: "2026-04-28 web.pages entity_id validation"
+  - name: domain
+    type: "String"
+    note: "Normalized domain key."
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: url
+    type: "String"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: canonical
+    type: "String"
+    fill:
+      rows: 1256336402
+      pct: 95.0
+      missing_rows: 66122969
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: page_type
+    type: "LowCardinality(String)"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: title
+    type: "String"
+    fill:
+      rows: 1296010184
+      pct: 98.0
+      missing_rows: 26449187
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: lang
+    type: "LowCardinality(String)"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: lang_score
+    type: "Float32"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: country
+    type: "LowCardinality(String)"
+    fill:
+      rows: 961427963
+      pct: 72.7
+      missing_rows: 361031408
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: desc
+    type: "String"
+    fill:
+      rows: 998456825
+      pct: 75.5
+      missing_rows: 324002546
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: text
+    type: "String"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: word_count
+    type: "UInt32"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: emails
+    type: "String"
+    fill:
+      rows: 503857020
+      pct: 38.1
+      missing_rows: 818602351
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: phones
+    type: "String"
+    fill:
+      rows: 313422871
+      pct: 23.7
+      missing_rows: 1009036500
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: socials
+    type: "String"
+    fill:
+      rows: 786863326
+      pct: 59.5
+      missing_rows: 535596045
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: outlinks
+    type: "String"
+    fill:
+      rows: 1210050324
+      pct: 91.5
+      missing_rows: 112409047
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: headings
+    type: "String"
+    fill:
+      rows: 1289397887
+      pct: 97.5
+      missing_rows: 33061484
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: nav
+    type: "String"
+    fill:
+      rows: 966717800
+      pct: 73.1
+      missing_rows: 355741571
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: tools
+    type: "String"
+    fill:
+      rows: 1281463130
+      pct: 96.9
+      missing_rows: 40996241
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: tag_ids
+    type: "String"
+    fill:
+      rows: 528983748
+      pct: 40.0
+      missing_rows: 793475623
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: site_name
+    type: "String"
+    fill:
+      rows: 735287410
+      pct: 55.6
+      missing_rows: 587171961
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: content_type
+    type: "LowCardinality(String)"
+    fill:
+      rows: 852986294
+      pct: 64.5
+      missing_rows: 469473077
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: twitter_site
+    type: "String"
+    fill:
+      rows: 178532015
+      pct: 13.5
+      missing_rows: 1143927356
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: twitter_creator
+    type: "String"
+    fill:
+      rows: 105796750
+      pct: 8.0
+      missing_rows: 1216662621
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: og_locale
+    type: "String"
+    fill:
+      rows: 132245937
+      pct: 10.0
+      missing_rows: 1190213434
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: org_type
+    type: "String"
+    fill:
+      rows: 605686392
+      pct: 45.8
+      missing_rows: 716772979
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: org_name
+    type: "String"
+    fill:
+      rows: 403350108
+      pct: 30.5
+      missing_rows: 919109263
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: org_phone
+    type: "String"
+    fill:
+      rows: 72735265
+      pct: 5.5
+      missing_rows: 1249724106
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: org_email
+    type: "String"
+    fill:
+      rows: 44963619
+      pct: 3.4
+      missing_rows: 1277495752
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: org_socials
+    type: "String"
+    fill:
+      rows: 223495634
+      pct: 16.9
+      missing_rows: 1098963737
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: address
+    type: "String"
+    fill:
+      rows: 91249697
+      pct: 6.9
+      missing_rows: 1231209674
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: postcode
+    type: "String"
+    fill:
+      rows: 48930997
+      pct: 3.7
+      missing_rows: 1273528374
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: org_country
+    type: "String"
+    fill:
+      rows: 50253456
+      pct: 3.8
+      missing_rows: 1272205915
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: lat
+    type: "Float32"
+    fill:
+      rows: 13224594
+      pct: 1.0
+      missing_rows: 1309234777
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: lng
+    type: "Float32"
+    fill:
+      rows: 13224594
+      pct: 1.0
+      missing_rows: 1309234777
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: founded
+    type: "String"
+    fill:
+      rows: 11902134
+      pct: 0.9
+      missing_rows: 1310557237
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: employees
+    type: "String"
+    fill:
+      rows: 3967378
+      pct: 0.3
+      missing_rows: 1318491993
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: rating
+    type: "Float32"
+    fill:
+      rows: 6612297
+      pct: 0.5
+      missing_rows: 1315847074
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: reviews
+    type: "UInt32"
+    fill:
+      rows: 3967378
+      pct: 0.3
+      missing_rows: 1318491993
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: keywords
+    type: "String"
+    fill:
+      rows: 265814334
+      pct: 20.1
+      missing_rows: 1056645037
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: hreflang_count
+    type: "UInt8"
+    fill:
+      rows: 167952340
+      pct: 12.7
+      missing_rows: 1154507031
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: crawled_at
+    type: "String"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: server
+    type: "LowCardinality(String)"
+    fill:
+      rows: 1211372784
+      pct: 91.6
+      missing_rows: 111086587
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: powered_by
+    type: "String"
+    fill:
+      rows: 407317486
+      pct: 30.8
+      missing_rows: 915141885
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: server_ip
+    type: "String"
+    fill:
+      rows: 1124090465
+      pct: 85.0
+      missing_rows: 198368906
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"
+  - name: response_ms
+    type: "UInt32"
+    fill:
+      rows: 1322459371
+      pct: 100.0
+      missing_rows: 0
+      definition: "historical non-empty/non-zero source-doc estimate"
+      stats: "estimated"
+      source: "historical crawl-profile percentages applied to current row count"

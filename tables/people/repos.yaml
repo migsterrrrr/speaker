@@ -1,33 +1,138 @@
 table: people.repos
-purpose: GitHub repositories linked to people
-grain: 1 row = 1 repo
-keys:
-  useful:
-    speaker_person_id: person id when present; often blank
-    owner: GitHub owner/login
-    repo: GitHub repo name
-hop_keys:
-  speaker_person_id:
-    note: person nucleus id when present; often blank
-    carry_to:
-    - people.main.speaker_person_id
-    - people.career.person_id
-    - people.education.speaker_person_id
-    - people.contact.speaker_person_id
-query_hints:
-- speaker_person_id is often blank; do not rely on it
-- owner plus repo identifies the repository
-- created_at is nullable; language and license may be empty
+purpose: "GitHub repositories with optional person link"
+grain: "1 row = 1 GitHub repository"
+estimated_rows: "40.06 million"
+row_count: 40061390
+row_identity: "owner, repo"
+graph_keys:
+  person_id: "Speaker person id when the repo owner resolves to a person."
+  owner: "GitHub owner/login."
+  repo: "GitHub repository name."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "owner, repo"
+  primary_key: "owner, repo"
+  partition_by: null
+  fast_where:
+    - where: "owner = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "owner = ... AND repo = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "person_id = ... without owner/repo"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
+  person_id:
+    - people.nucleus.person_id
+    - people.contacts.person_id
+    - people.roles_history.person_id
+query_notes:
+  - "person_id is present only when the repo owner resolves to a person."
+  - "The physical access path is owner, repo; person_id is a graph key but not the ORDER BY prefix."
 columns:
-  speaker_person_id: string?; person id; often blank
-  owner: string; GitHub owner/login
-  repo: string; GitHub repo name
-  language: string?; primary language
-  created_at: datetime?
-  description: string?
-  description_language: string?; language code like en
-  license: string?; SPDX-like value such as mit or cc0-1.0
-  forks: int
-  stars: int
-  size_kb: int
-  last_pr_id: int
+  - name: person_id
+    type: "String"
+    note: "Speaker person id; carry across people.* tables."
+    fill:
+      rows: 1807450
+      pct: 4.5117
+      missing_rows: 38253940
+      definition: "non-empty string"
+      stats: "exact"
+  - name: owner
+    type: "String"
+    fill:
+      rows: 40061390
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: repo
+    type: "String"
+    fill:
+      rows: 40061149
+      pct: 99.9994
+      missing_rows: 241
+      definition: "non-empty string"
+      stats: "exact"
+  - name: language
+    type: "LowCardinality(String)"
+    fill:
+      rows: 27737657
+      pct: 69.2379
+      missing_rows: 12323733
+      definition: "non-empty string"
+      stats: "exact"
+  - name: created_at
+    type: "Nullable(DateTime)"
+    fill:
+      rows: 27343820
+      pct: 68.2548
+      missing_rows: 12717570
+      definition: "non-null value"
+      stats: "exact"
+  - name: description
+    type: "String"
+    fill:
+      rows: 19187172
+      pct: 47.8944
+      missing_rows: 20874218
+      definition: "non-empty string"
+      stats: "exact"
+  - name: description_language
+    type: "LowCardinality(String)"
+    fill:
+      rows: 40061390
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: license
+    type: "LowCardinality(String)"
+    fill:
+      rows: 9587951
+      pct: 23.9331
+      missing_rows: 30473439
+      definition: "non-empty string"
+      stats: "exact"
+  - name: forks
+    type: "UInt32"
+    fill:
+      rows: 40061390
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 7065469
+      nonzero_pct: 17.6366
+  - name: stars
+    type: "UInt32"
+    fill:
+      rows: 40061390
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 5762377
+      nonzero_pct: 14.3839
+  - name: size_kb
+    type: "UInt64"
+    fill:
+      rows: 40061390
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 29324693
+      nonzero_pct: 73.1994
+  - name: last_pr_id
+    type: "UInt32"
+    fill:
+      rows: 40061390
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 40061390
+      nonzero_pct: 100.0

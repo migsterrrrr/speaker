@@ -74,17 +74,22 @@ path_has_dir() {
 
 schema_artifacts() {
   cat <<'EOF'
-_mesh.yaml|tables/_mesh.yaml
-all.yaml|tables/all.yaml
-people.main.yaml|tables/people/main.yaml
-people.career.yaml|tables/people/career.yaml
+_mesh.yaml|mesh.yaml
+people.nucleus.yaml|tables/people/nucleus.yaml
+people.contacts.yaml|tables/people/contacts.yaml
+people.roles_history.yaml|tables/people/roles_history.yaml
 people.education.yaml|tables/people/education.yaml
-people.contact.yaml|tables/people/contact.yaml
 people.repos.yaml|tables/people/repos.yaml
-companies.main.yaml|tables/companies/main.yaml
+companies.nucleus.yaml|tables/companies/nucleus.yaml
+companies.identifiers.yaml|tables/companies/identifiers.yaml
+companies.metrics.yaml|tables/companies/metrics.yaml
+companies.industry_keywords.yaml|tables/companies/industry_keywords.yaml
 companies.jobs.yaml|tables/companies/jobs.yaml
-companies.news.yaml|tables/companies/news.yaml
-web.links.yaml|tables/web/links.yaml
+companies.posts.yaml|tables/companies/posts.yaml
+companies.competitors.yaml|tables/companies/competitors.yaml
+companies.funding_rounds.yaml|tables/companies/funding_rounds.yaml
+companies.web_outlinks.yaml|tables/companies/web_outlinks.yaml
+web.domain_entity_bridge.yaml|tables/web/domain_entity_bridge.yaml
 web.pages.yaml|tables/web/pages.yaml
 EOF
 }
@@ -115,6 +120,7 @@ done
 
 mkdir -p "$CONFIG_DIR"
 mkdir -p "$SCHEMA_DIR"
+rm -f "$SCHEMA_DIR"/*.yaml
 
 cp "$TMP_SPEAKER" "$TARGET"
 chmod 755 "$TARGET"

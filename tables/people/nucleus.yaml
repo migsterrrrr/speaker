@@ -1,0 +1,200 @@
+table: people.nucleus
+purpose: "canonical person profile snapshot"
+grain: "1 row = 1 person"
+estimated_rows: "825.41 million"
+row_count: 825412717
+row_identity: "person_id"
+graph_keys:
+  person_id: "Speaker person id; canonical across people.* tables."
+  current_company_id: "Speaker company/entity id for the current company; hop to companies.nucleus.entity_id."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "person_id"
+  primary_key: "person_id"
+  partition_by: "cityHash64(person_id) % 64"
+  fast_where:
+    - where: "person_id = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "person_id IN (...)"
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "current_company_id = ... without a person_id predicate"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+    - where: "professional_title/professional_title_family scans without person_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
+  person_id:
+    - people.contacts.person_id
+    - people.roles_history.person_id
+    - people.education.person_id
+    - people.repos.person_id
+  current_company_id:
+    - companies.nucleus.entity_id
+    - companies.identifiers.entity_id
+    - companies.metrics.entity_id
+    - companies.jobs.entity_id
+    - companies.posts.entity_id
+query_notes:
+  - "Use person_id to hop to other people tables."
+  - "Use current_company_id as the company/entity id hop into companies.*."
+  - "The physical access path is person_id; company/title/country filters are graph-useful but not ORDER BY-prefix fast."
+columns:
+  - name: person_id
+    type: "String"
+    note: "Speaker person id; carry across people.* tables."
+    fill:
+      rows: 825412717
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: first_name
+    type: "String"
+    fill:
+      rows: 824756383
+      pct: 99.9205
+      missing_rows: 656334
+      definition: "non-empty string"
+      stats: "exact"
+  - name: last_name
+    type: "String"
+    fill:
+      rows: 794234174
+      pct: 96.2227
+      missing_rows: 31178543
+      definition: "non-empty string"
+      stats: "exact"
+  - name: country_code
+    type: "Nullable(String)"
+    fill:
+      rows: 627794932
+      pct: 76.0583
+      missing_rows: 197617785
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: location_text
+    type: "Nullable(String)"
+    fill:
+      rows: 824896334
+      pct: 99.9374
+      missing_rows: 516383
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: professional_title
+    type: "Nullable(String)"
+    fill:
+      rows: 261899695
+      pct: 31.7295
+      missing_rows: 563513022
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: professional_title_family
+    type: "Nullable(String)"
+    fill:
+      rows: 261899695
+      pct: 31.7295
+      missing_rows: 563513022
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: seniority
+    type: "LowCardinality(String)"
+    fill:
+      rows: 825412717
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: current_company_id
+    type: "Nullable(String)"
+    note: "Speaker company/entity id for the current company."
+    fill:
+      rows: 291551366
+      pct: 35.3219
+      missing_rows: 533861351
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: current_company_name
+    type: "Nullable(String)"
+    fill:
+      rows: 291551275
+      pct: 35.3219
+      missing_rows: 533861442
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: technologies
+    type: "Array(String)"
+    fill:
+      rows: 66421919
+      pct: 8.0471
+      missing_rows: 758990798
+      definition: "array length > 0"
+      stats: "exact"
+  - name: domain_expertise
+    type: "Array(String)"
+    fill:
+      rows: 86853186
+      pct: 10.5224
+      missing_rows: 738559531
+      definition: "array length > 0"
+      stats: "exact"
+  - name: credentials
+    type: "Array(String)"
+    fill:
+      rows: 33831149
+      pct: 4.0987
+      missing_rows: 791581568
+      definition: "array length > 0"
+      stats: "exact"
+  - name: languages
+    type: "Array(String)"
+    fill:
+      rows: 62728810
+      pct: 7.5997
+      missing_rows: 762683907
+      definition: "array length > 0"
+      stats: "exact"
+  - name: highest_edu_level
+    type: "Nullable(String)"
+    fill:
+      rows: 75778400
+      pct: 9.1807
+      missing_rows: 749634317
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: highest_edu_institution
+    type: "Nullable(String)"
+    fill:
+      rows: 75777682
+      pct: 9.1806
+      missing_rows: 749635035
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: influencer_score
+    type: "Float32"
+    fill:
+      rows: 825412717
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 336335006
+      nonzero_pct: 40.7475
+  - name: completeness_score
+    type: "Float32"
+    fill:
+      rows: 825412717
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 825412717
+      nonzero_pct: 100.0
+  - name: profile_last_updated
+    type: "Date"
+    fill:
+      rows: 825412717
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"

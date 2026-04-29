@@ -1,0 +1,352 @@
+table: companies.identifiers
+purpose: "company websites, social/profile URLs, and external handles"
+grain: "1 row = 1 company/entity"
+estimated_rows: "26.32 million"
+row_count: 26323167
+row_identity: "entity_id"
+graph_keys:
+  entity_id: "Speaker company/entity id."
+  website_domain: "Normalized website/domain fallback; hop to web pages and domain bridge."
+clickhouse_access:
+  note: "Public table may be a view; physical access describes the backing ClickHouse MergeTree layout. ClickHouse primary keys are sparse indexes, not uniqueness constraints."
+  order_by: "entity_id"
+  primary_key: "entity_id"
+  partition_by: "cityHash64(entity_id) % 64"
+  fast_where:
+    - where: "entity_id = ..."
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+    - where: "entity_id IN (...)"
+      why: "matches ORDER BY left prefix; enables MergeTree sparse-index pruning"
+  not_fast_by_sort_key:
+    - where: "website_domain = ... without entity_id"
+      why: "does not match the ORDER BY left prefix; expect a broader scan"
+  reminder: "There is one physical ORDER BY. fast_where entries are prefix-friendly WHERE shapes, not separate secondary indexes."
+traverse:
+  entity_id:
+    - companies.nucleus.entity_id
+    - companies.metrics.entity_id
+    - companies.jobs.entity_id
+    - people.nucleus.current_company_id
+  website_domain:
+    - web.pages.domain
+    - web.domain_entity_bridge.domain
+query_notes:
+  - "Use entity_id when possible."
+  - "website_domain is a useful graph/domain fallback but not the ORDER BY prefix."
+columns:
+  - name: entity_id
+    type: "String"
+    note: "Speaker company/entity id; carry across companies.* and web entity tables."
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-empty string"
+      stats: "exact"
+  - name: linkedin_slug
+    type: "Nullable(String)"
+    fill:
+      rows: 26266066
+      pct: 99.7831
+      missing_rows: 57101
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: linkedin_url
+    type: "Nullable(String)"
+    fill:
+      rows: 26312365
+      pct: 99.959
+      missing_rows: 10802
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: website_domain
+    type: "Nullable(String)"
+    note: "Normalized company website domain when known."
+    fill:
+      rows: 18400179
+      pct: 69.9011
+      missing_rows: 7922988
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: website_url
+    type: "Nullable(String)"
+    fill:
+      rows: 18336323
+      pct: 69.6585
+      missing_rows: 7986844
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: x_handle
+    type: "Nullable(String)"
+    fill:
+      rows: 1365134
+      pct: 5.1861
+      missing_rows: 24958033
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: facebook_url
+    type: "Nullable(String)"
+    fill:
+      rows: 109102
+      pct: 0.4145
+      missing_rows: 26214065
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: instagram_handle
+    type: "Nullable(String)"
+    fill:
+      rows: 119729
+      pct: 0.4548
+      missing_rows: 26203438
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: youtube_url
+    type: "Nullable(String)"
+    fill:
+      rows: 16738
+      pct: 0.0636
+      missing_rows: 26306429
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: tiktok_handle
+    type: "Nullable(String)"
+    fill:
+      rows: 655
+      pct: 0.0025
+      missing_rows: 26322512
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: linktree_url
+    type: "Nullable(String)"
+    fill:
+      rows: 56630
+      pct: 0.2151
+      missing_rows: 26266537
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: github_url
+    type: "Nullable(String)"
+    fill:
+      rows: 2226
+      pct: 0.0085
+      missing_rows: 26320941
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: threads_url
+    type: "Nullable(String)"
+    fill:
+      rows: 75
+      pct: 0.0003
+      missing_rows: 26323092
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: calendly_url
+    type: "Nullable(String)"
+    fill:
+      rows: 6944
+      pct: 0.0264
+      missing_rows: 26316223
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: whatsapp_url
+    type: "Nullable(String)"
+    fill:
+      rows: 43349
+      pct: 0.1647
+      missing_rows: 26279818
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: telegram_url
+    type: "Nullable(String)"
+    fill:
+      rows: 2650
+      pct: 0.0101
+      missing_rows: 26320517
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: meetup_url
+    type: "Nullable(String)"
+    fill:
+      rows: 1724
+      pct: 0.0065
+      missing_rows: 26321443
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: behance_url
+    type: "Nullable(String)"
+    fill:
+      rows: 4104
+      pct: 0.0156
+      missing_rows: 26319063
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: vimeo_url
+    type: "Nullable(String)"
+    fill:
+      rows: 1518
+      pct: 0.0058
+      missing_rows: 26321649
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: medium_url
+    type: "Nullable(String)"
+    fill:
+      rows: 1183
+      pct: 0.0045
+      missing_rows: 26321984
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: substack_url
+    type: "Nullable(String)"
+    fill:
+      rows: 3910
+      pct: 0.0149
+      missing_rows: 26319257
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: spotify_url
+    type: "Nullable(String)"
+    fill:
+      rows: 2749
+      pct: 0.0104
+      missing_rows: 26320418
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: etsy_url
+    type: "Nullable(String)"
+    fill:
+      rows: 2445
+      pct: 0.0093
+      missing_rows: 26320722
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: yelp_url
+    type: "Nullable(String)"
+    fill:
+      rows: 14858
+      pct: 0.0564
+      missing_rows: 26308309
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: wikipedia_url
+    type: "Nullable(String)"
+    fill:
+      rows: 952
+      pct: 0.0036
+      missing_rows: 26322215
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: indiamart_url
+    type: "Nullable(String)"
+    fill:
+      rows: 68500
+      pct: 0.2602
+      missing_rows: 26254667
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: alibaba_url
+    type: "Nullable(String)"
+    fill:
+      rows: 6458
+      pct: 0.0245
+      missing_rows: 26316709
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: tradeindia_url
+    type: "Nullable(String)"
+    fill:
+      rows: 30
+      pct: 0.0001
+      missing_rows: 26323137
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: fiverr_url
+    type: "Nullable(String)"
+    fill:
+      rows: 1317
+      pct: 0.005
+      missing_rows: 26321850
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: crunchbase_url
+    type: "Nullable(String)"
+    fill:
+      rows: 2975560
+      pct: 11.304
+      missing_rows: 23347607
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: crunchbase_uuid
+    type: "Nullable(String)"
+    fill:
+      rows: 2976644
+      pct: 11.3081
+      missing_rows: 23346523
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: producthunt_url
+    type: "Nullable(String)"
+    fill:
+      rows: 6384
+      pct: 0.0243
+      missing_rows: 26316783
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: producthunt_slug
+    type: "Nullable(String)"
+    fill:
+      rows: 6384
+      pct: 0.0243
+      missing_rows: 26316783
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: producthunt_company_website_url
+    type: "Nullable(String)"
+    fill:
+      rows: 6384
+      pct: 0.0243
+      missing_rows: 26316783
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: angellist_url
+    type: "Nullable(String)"
+    fill:
+      rows: 74
+      pct: 0.0003
+      missing_rows: 26323093
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: gartner_slug
+    type: "Nullable(String)"
+    fill:
+      rows: 4592
+      pct: 0.0174
+      missing_rows: 26318575
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: gartner_company_website_url
+    type: "Nullable(String)"
+    fill:
+      rows: 4590
+      pct: 0.0174
+      missing_rows: 26318577
+      definition: "non-null/non-empty string"
+      stats: "exact"
+  - name: identity_signal_count
+    type: "UInt8"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"
+      nonzero_rows: 26320310
+      nonzero_pct: 99.9891
+  - name: updated_at
+    type: "DateTime64(3, 'UTC')"
+    fill:
+      rows: 26323167
+      pct: 100.0
+      missing_rows: 0
+      definition: "non-nullable column"
+      stats: "exact"

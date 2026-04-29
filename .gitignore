@@ -1,0 +1,11 @@
+# Local/deployed server code; not part of the public CLI/schema repo
+proxy/
+
+# Local secrets and state
+.env
+*.env
+*.db
+*.log
+
+# OS/editor noise
+.DS_Store

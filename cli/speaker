@@ -5,7 +5,7 @@
 set -e
 
 # --- Config ---
-VERSION="3.1.1"
+VERSION="3.1.2"
 ROOT_URL="${ROOT_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker/master}"
 REPO_URL="${REPO_URL:-$ROOT_URL/cli}"
 SKILL_URL="${SKILL_URL:-$ROOT_URL/SKILL.md}"
@@ -14,10 +14,23 @@ CONFIG_DIR="${CONFIG_DIR:-$HOME/.speaker}"
 CONFIG_FILE="$CONFIG_DIR/config"
 SCHEMA_DIR="$CONFIG_DIR/tables"
 
+cache_bust_url() {
+    local url="$1"
+    local bust="${2:-$(date +%s)}"
+    if [[ "$url" == file://* ]]; then
+        echo "$url"
+    elif [[ "$url" == *\?* ]]; then
+        echo "$url&v=$bust"
+    else
+        echo "$url?v=$bust"
+    fi
+}
+
 # --- Version check (non-blocking, background) ---
 check_version() {
-    local latest
-    latest=$(curl -sf --max-time 5 -H "Cache-Control: no-cache" "$REPO_URL/VERSION" 2>/dev/null)
+    local latest bust
+    bust=$(date +%s)
+    latest=$(curl -sf --max-time 5 -H "Cache-Control: no-cache" "$(cache_bust_url "$REPO_URL/VERSION" "$bust")" 2>/dev/null)
     if [[ -n "$latest" && "$latest" != "$VERSION" ]]; then
         echo "" >&2
         echo "  ⚡ Update available: $VERSION → $latest" >&2
@@ -27,7 +40,8 @@ check_version() {
 }
 
 cmd_update() {
-    local target tmp_target new_ver
+    local target tmp_target new_ver bust
+    bust=$(date +%s)
     target=$(command -v speaker 2>/dev/null || true)
     if [[ -z "$target" ]]; then
         echo "Error: speaker is not on PATH. Re-run the installer." >&2
@@ -40,7 +54,7 @@ cmd_update() {
 
     echo "Updating speaker CLI..."
     tmp_target=$(mktemp)
-    if ! curl --fail --show-error --silent --location "$REPO_URL/speaker" -o "$tmp_target"; then
+    if ! curl --fail --show-error --silent --location "$(cache_bust_url "$REPO_URL/speaker" "$bust")" -o "$tmp_target"; then
         rm -f "$tmp_target"
         echo "Error: failed to download updated CLI." >&2
         exit 1
@@ -48,12 +62,12 @@ cmd_update() {
     chmod +x "$tmp_target"
 
     mkdir -p "$CONFIG_DIR"
-    if ! curl --fail --show-error --silent --location "$SKILL_URL" -o "$CONFIG_DIR/SKILL.md"; then
+    if ! curl --fail --show-error --silent --location "$(cache_bust_url "$SKILL_URL" "$bust")" -o "$CONFIG_DIR/SKILL.md"; then
         rm -f "$tmp_target"
         echo "Error: failed to refresh $CONFIG_DIR/SKILL.md" >&2
         exit 1
     fi
-    if ! sync_schema_docs; then
+    if ! CACHE_BUST="$bust" sync_schema_docs; then
         rm -f "$tmp_target"
         echo "Error: failed to refresh local schema docs" >&2
         exit 1
@@ -117,15 +131,21 @@ EOF
 }
 
 sync_schema_docs() {
-    local src dst
-    mkdir -p "$SCHEMA_DIR"
-    rm -f "$SCHEMA_DIR"/*.yaml
+    local src dst tmp_dir bust url
+    bust="${CACHE_BUST:-$(date +%s)}"
+    tmp_dir=$(mktemp -d) || return 1
     while IFS='|' read -r dst src; do
         [[ -z "$dst" ]] && continue
-        if ! curl --fail --show-error --silent --location "$ROOT_URL/$src" -o "$SCHEMA_DIR/$dst"; then
+        url=$(cache_bust_url "$ROOT_URL/$src" "$bust")
+        if ! curl --fail --show-error --silent --location "$url" -o "$tmp_dir/$dst"; then
+            rm -rf "$tmp_dir"
             return 1
         fi
     done < <(schema_artifacts)
+    mkdir -p "$SCHEMA_DIR"
+    rm -f "$SCHEMA_DIR"/*.yaml
+    mv "$tmp_dir"/*.yaml "$SCHEMA_DIR"/
+    rmdir "$tmp_dir"
 }
 
 schema_path_for() {

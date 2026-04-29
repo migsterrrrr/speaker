@@ -5,7 +5,7 @@
 set -e
 
 # --- Config ---
-VERSION="3.1.0"
+VERSION="3.1.1"
 ROOT_URL="${ROOT_URL:-https://raw.githubusercontent.com/migsterrrrr/speaker/master}"
 REPO_URL="${REPO_URL:-$ROOT_URL/cli}"
 SKILL_URL="${SKILL_URL:-$ROOT_URL/SKILL.md}"
@@ -141,9 +141,24 @@ schema_path_for() {
 }
 
 ensure_schema_docs() {
-    if [[ ! -d "$SCHEMA_DIR" ]]; then
-        echo "Error: local schema docs not found. Run 'speaker update'." >&2
-        exit 1
+    if [[ ! -d "$SCHEMA_DIR" ]] || [[ ! -f "$SCHEMA_DIR/_mesh.yaml" ]]; then
+        echo "Refreshing local schema docs..." >&2
+        if ! sync_schema_docs; then
+            echo "Error: local schema docs not found and refresh failed. Run 'speaker update'." >&2
+            exit 1
+        fi
+    fi
+}
+
+refresh_schema_docs_once() {
+    local refreshed_var="$1"
+    if [[ "${!refreshed_var}" -eq 0 ]]; then
+        echo "Refreshing local schema docs..." >&2
+        if ! sync_schema_docs; then
+            echo "Error: failed to refresh local schema docs. Run 'speaker update'." >&2
+            exit 1
+        fi
+        printf -v "$refreshed_var" 1
     fi
 }
 
@@ -369,12 +384,15 @@ cmd_count() {
 
 cmd_schema() {
     local arg="$1"
-    local path dst src first=1
+    local path dst src first=1 refreshed=0
 
     ensure_schema_docs
 
     if [[ -z "$arg" ]]; then
         path="$SCHEMA_DIR/_mesh.yaml"
+        if [[ ! -f "$path" ]]; then
+            refresh_schema_docs_once refreshed
+        fi
         if [[ ! -f "$path" ]]; then
             echo "Error: local schema file missing: $path" >&2
             echo "Run 'speaker update'." >&2
@@ -388,6 +406,9 @@ cmd_schema() {
         while IFS='|' read -r dst src; do
             [[ -z "$dst" ]] && continue
             path="$SCHEMA_DIR/$dst"
+            if [[ ! -f "$path" ]]; then
+                refresh_schema_docs_once refreshed
+            fi
             if [[ ! -f "$path" ]]; then
                 echo "Error: local schema file missing: $path" >&2
                 echo "Run 'speaker update'." >&2
@@ -408,6 +429,9 @@ cmd_schema() {
         exit 1
     fi
 
+    if [[ ! -f "$path" ]]; then
+        refresh_schema_docs_once refreshed
+    fi
     if [[ ! -f "$path" ]]; then
         echo "Error: local schema file missing: $path" >&2
         echo "Run 'speaker update'." >&2

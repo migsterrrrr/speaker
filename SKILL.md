@@ -116,6 +116,117 @@ SCOPE → SCHEMA → KEY → QUERY → CARRY → HOP
 6. Query the next table.
 7. Repeat.
 
+### Stay in the loop
+
+Do not write a script — Python, a bash loop, or similar — that fires a batch of queries up front.
+
+Stay in the loop: run one query, read the result, decide the next query from what you learned. Use code only to process results you already have, such as deduping, ranking, or formatting a large NDJSON dump saved to a file. Never use code to plan or fire the queries.
+
+A static script decides the hops before it sees the data, so it misses the signal this loop is meant to find.
+
+If a query-and-schema MCP tool is available, prefer it for this loop. Keep the CLI for when you need code to process results.
+
+### After each result
+
+Ask:
+
+- What did I learn?
+- Which key do I carry: `person_id`, `entity_id`, or `domain`?
+- What is the next hop — which table, and why?
+- Am I done?
+
+Then run that next query. Do not batch the rest.
+
+## Worked example
+
+Buyer search for attio.com. The SQL runs against the live graph; results are described in words, not shown as rows.
+
+Goal: learn what Attio is, then find likely buyer companies from graph evidence, one hop at a time.
+
+**1. Resolve the starting domain.**
+
+```bash
+speaker query "SELECT domain, entity_id, resolution_status FROM web.domain_entity_bridge WHERE domain = 'attio.com'"
+```
+
+What this tells you: whether the domain resolves uniquely to a company, and if so, the `entity_id` to carry. If the domain is ambiguous or unresolved, `entity_id` is blank — keep hopping by `domain`.
+
+**2. Read the company nucleus, using the `entity_id` from step 1.**
+
+```bash
+speaker query "SELECT entity_id, name, website, summary, keywords, offerings, market, customer_types, business_model, headcount, country FROM companies.nucleus WHERE entity_id = 'spkco_...'"
+```
+
+What this tells you: what the company does and who it sells to. Fields such as `customer_types`, `market`, and `offerings` define what a buyer looks like. The next hop depends on this profile, not on a prewritten list of tables.
+
+**3. Enrich taxonomy for the same `entity_id`.**
+
+```bash
+speaker query "SELECT entity_id, li_industry, li_industries, li_specialities, crunchbase_categories FROM companies.industry_keywords WHERE entity_id = 'spkco_...'"
+```
+
+What this tells you: industry and speciality labels you can use later to judge candidate companies.
+
+**4. Follow outlinks from Attio's own site.**
+
+```bash
+speaker query "SELECT source_entity_id, source_page_url, source_page_type, target_domain, target_entity_id, target_resolution_status FROM companies.web_outlinks WHERE source_entity_id = 'spkco_...' LIMIT 100"
+```
+
+What this tells you: domains Attio already links to, and `target_entity_id` when those domains resolve. Some `source_page_url` values will look like customer or case-study pages; those targets are the first buyer candidates. Carry the interesting `target_domain` and `target_entity_id` values.
+
+**5. Inspect page evidence on attio.com. Do not select `text` yet.**
+
+```bash
+speaker query "SELECT url, title, desc, page_type FROM web.pages WHERE domain = 'attio.com' LIMIT 50"
+```
+
+What this tells you: which pages exist — product, pricing, customers, case studies. Use titles and URLs to decide the next hop, such as resolving a domain you just learned or revisiting outlinks from a specific page.
+
+**6. Resolve only domains you actually saw.**
+
+```bash
+speaker query "SELECT domain, entity_id, resolution_status FROM web.domain_entity_bridge WHERE domain IN ('...')"
+```
+
+Put domains from the outlink or page results in the `IN` list. Do not guess them in advance. Do not match candidates by company name: names are ambiguous, domains are not.
+
+**7. Profile those candidate companies.**
+
+```bash
+speaker query "SELECT entity_id, name, website, summary, keywords, offerings, market, customer_types, headcount, country FROM companies.nucleus WHERE entity_id IN ('spkco_...', 'spkco_...')"
+```
+
+What this tells you: whether each candidate looks like a buyer given Attio's profile. Drop or keep them before hopping further.
+
+If you still need signal, hop the same `entity_id`s into `companies.metrics` or `companies.jobs`. `companies.competitors`, `companies.posts`, and `companies.funding_rounds` are later hops only if the last result says you need them — not a default batch.
+
+Finding people at those companies by `people.nucleus.current_company_id` or `people.roles_history.speaker_company_id` is graph-valid but not ORDER BY-prefix fast. Do not use those as a first-step scan.
+
+### The wrong version
+
+Do not fire the hops from a script that has already chosen every query:
+
+```python
+# Wrong: the path is fixed before any result is read
+queries = [
+    "SELECT domain, entity_id, resolution_status FROM web.domain_entity_bridge WHERE domain = 'attio.com'",
+    "SELECT entity_id, name, website FROM companies.nucleus WHERE entity_id = 'spkco_...'",
+    "SELECT entity_id, li_industry FROM companies.industry_keywords WHERE entity_id = 'spkco_...'",
+    "SELECT source_entity_id, target_domain FROM companies.web_outlinks WHERE source_entity_id = 'spkco_...'",
+    "SELECT url, title FROM web.pages WHERE domain = 'attio.com' LIMIT 50",
+    "SELECT competitor_domain FROM companies.competitors WHERE entity_id = 'spkco_...'",
+    "SELECT entity_id, li_headcount FROM companies.metrics WHERE entity_id = 'spkco_...'",
+    "SELECT title FROM companies.jobs WHERE entity_id = 'spkco_...'",
+    "SELECT title FROM companies.posts WHERE entity_id = 'spkco_...'",
+    "SELECT round_type, amount_usd FROM companies.funding_rounds WHERE entity_id = 'spkco_...'",
+]
+for sql in queries:
+    subprocess.run(["speaker", "query", sql])
+```
+
+That script has already chosen the hops, the identifiers, and the stop point. The loop exists so the next query is decided by the last result.
+
 ## Entry patterns
 
 ### Known company

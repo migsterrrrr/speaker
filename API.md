@@ -170,7 +170,7 @@ curl https://api.speaker.sh/login \
 | `companies.posts` | 22.8M | `entity_id`, `post_id` | news/article mentions |
 | `companies.competitors` | 59M | `entity_id`, `competitor_domain` | competitor-domain edges |
 | `companies.funding_rounds` | 617K | `entity_id`, `funding_round_id` | funding rounds |
-| `companies.web_outlinks` | 1.49B | `source_entity_id`, `source_url` | page-level external outlinks |
+| `companies.web_outlinks` | 1.49B | `source_entity_id`, `source_page_url` | page-level external outlinks |
 
 ### web.*
 
